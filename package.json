@@ -1,0 +1,44 @@
+{
+  "name": "wbso-automation-platform",
+  "version": "1.0.0",
+  "description": "AI-powered WBSO automation platform with Firebase backend",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "functions",
+    "chrome-extension"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspace=frontend",
+    "build:functions": "npm run build --workspace=functions",
+    "build:extension": "npm run build --workspace=chrome-extension",
+    "deploy": "firebase deploy",
+    "deploy:functions": "firebase deploy --only functions",
+    "deploy:firestore": "firebase deploy --only firestore",
+    "emulators": "firebase emulators:start",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "devDependencies": {
+    "firebase-tools": "^13.0.0",
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  },
+  "dependencies": {
+    "firebase": "^10.7.0",
+    "firebase-admin": "^12.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "wbso",
+    "automation",
+    "firebase",
+    "nextjs",
+    "ai",
+    "dutch-tax-credit"
+  ],
+  "author": "WBSO Platform Team",
+  "license": "MIT"
+} 

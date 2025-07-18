@@ -1,0 +1,80 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return request.auth.uid == userId;
+    }
+    
+    function isCompanyMember(companyId) {
+      return exists(/databases/$(database)/documents/companies/$(companyId)/members/$(request.auth.uid));
+    }
+    
+    function isCompanyAdmin(companyId) {
+      return exists(/databases/$(database)/documents/companies/$(companyId)/admins/$(request.auth.uid));
+    }
+    
+    // Users collection - users can only access their own profile
+    match /users/{userId} {
+      allow read, write: if isAuthenticated() && isOwner(userId);
+    }
+    
+    // Companies collection
+    match /companies/{companyId} {
+      allow read: if isAuthenticated() && (isCompanyMember(companyId) || isCompanyAdmin(companyId));
+      allow write: if isAuthenticated() && isCompanyAdmin(companyId);
+      
+      // Company members subcollection
+      match /members/{memberId} {
+        allow read: if isAuthenticated() && (isCompanyMember(companyId) || isCompanyAdmin(companyId));
+        allow write: if isAuthenticated() && isCompanyAdmin(companyId);
+      }
+      
+      // Company admins subcollection
+      match /admins/{adminId} {
+        allow read: if isAuthenticated() && (isCompanyMember(companyId) || isCompanyAdmin(companyId));
+        allow write: if isAuthenticated() && isCompanyAdmin(companyId);
+      }
+    }
+    
+    // Applications collection - linked to company membership
+    match /applications/{applicationId} {
+      allow read: if isAuthenticated() && 
+        (isOwner(resource.data.userId) || isCompanyMember(resource.data.companyId));
+      allow create: if isAuthenticated() && isOwner(request.resource.data.userId);
+      allow update: if isAuthenticated() && 
+        (isOwner(resource.data.userId) || isCompanyAdmin(resource.data.companyId));
+      allow delete: if isAuthenticated() && 
+        (isOwner(resource.data.userId) || isCompanyAdmin(resource.data.companyId));
+    }
+    
+    // Training data collection - anonymized, restricted access
+    match /trainingData/{dataId} {
+      allow read: if false; // No direct read access
+      allow write: if isAuthenticated(); // Users can contribute anonymized data
+    }
+    
+    // System collections (read-only for users)
+    match /systemConfig/{document} {
+      allow read: if isAuthenticated();
+      allow write: if false; // Only functions can write
+    }
+    
+    // Pricing tiers and plans
+    match /pricingPlans/{planId} {
+      allow read: if true; // Public read access
+      allow write: if false; // Only functions can write
+    }
+    
+    // User subscriptions
+    match /subscriptions/{subscriptionId} {
+      allow read: if isAuthenticated() && isOwner(resource.data.userId);
+      allow write: if false; // Only functions can manage subscriptions
+    }
+  }
+} 
