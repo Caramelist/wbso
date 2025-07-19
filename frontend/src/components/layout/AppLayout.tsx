@@ -24,7 +24,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     {
       key: 'applications',
       icon: '📋',
-      href: '/applications',
+      href: '/applications/new',
       labelKey: 'navigation.applications'
     },
     {

@@ -215,12 +215,18 @@ const DashboardOverview: React.FC = () => {
               {t('dashboard.quickActions')}
             </h3>
             <div className="space-y-3">
-              <button className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium transition-colors">
+              <a 
+                href="/applications/new"
+                className="block w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium transition-colors text-center"
+              >
                 {t('wbso.createApplication')}
-              </button>
-              <button className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-medium transition-colors">
+              </a>
+              <a 
+                href="/applications/new"
+                className="block w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-medium transition-colors text-center"
+              >
                 {t('wbso.generateWithAI')}
-              </button>
+              </a>
               <a 
                 href="/company/setup"
                 className="block w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-medium transition-colors text-center"
