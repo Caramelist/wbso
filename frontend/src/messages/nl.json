@@ -1,0 +1,117 @@
+{
+  "app": {
+    "name": "WBSO Simpel",
+    "tagline": "Transformeer weken van WBSO-papierwerk naar 30 minuten met AI-aangedreven automatisering",
+    "description": "Het slimste platform voor WBSO-aanvragen in Nederland"
+  },
+  "auth": {
+    "welcome": "Welkom Terug",
+    "signIn": "Aanmelden",
+    "signOut": "Afmelden",
+    "signInWith": "Aanmelden met {provider}",
+    "signInToAccess": "Meld je aan om toegang te krijgen tot je WBSO-aanvragen",
+    "loading": "Bezig met inloggen...",
+    "error": "Er is een fout opgetreden bij het aanmelden"
+  },
+  "navigation": {
+    "dashboard": "Dashboard", 
+    "applications": "Aanvragen",
+    "company": "Bedrijf",
+    "team": "Team",
+    "settings": "Instellingen",
+    "help": "Help",
+    "documentation": "Documentatie"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Overzicht van je WBSO-aanvragen en voortgang",
+    "totalApplications": "Totaal Aanvragen",
+    "pendingReview": "Wacht op Goedkeuring",
+    "submitted": "Ingediend",
+    "approved": "Goedgekeurd",
+    "quickActions": "Snelle Acties",
+    "newApplication": "Nieuwe Aanvraag",
+    "viewAll": "Bekijk Alles"
+  },
+  "company": {
+    "setup": "Bedrijfsgegevens Instellen",
+    "name": "Bedrijfsnaam",
+    "kvkNumber": "KVK-nummer",
+    "address": "Adres",
+    "contactPerson": "Contactpersoon",
+    "email": "E-mailadres",
+    "phone": "Telefoonnummer",
+    "save": "Opslaan",
+    "autoFillFromKvk": "Automatisch invullen met KVK-gegevens"
+  },
+  "wbso": {
+    "application": "WBSO-aanvraag",
+    "newApplication": "Nieuwe WBSO-aanvraag",
+    "projectTitle": "Projecttitel",
+    "projectDescription": "Projectbeschrijving",
+    "researchActivities": "Onderzoeksactiviteiten",
+    "timeline": "Tijdlijn",
+    "budget": "Budget",
+    "expectedHours": "Verwachte Uren",
+    "startDate": "Startdatum",
+    "endDate": "Einddatum",
+    "generateWithAI": "Genereren met AI",
+    "improveWithAI": "Verbeteren met AI",
+    "save": "Opslaan",
+    "submit": "Indienen",
+    "draft": "Concept",
+    "review": "Beoordeling",
+    "submitted": "Ingediend",
+    "approved": "Goedgekeurd",
+    "rejected": "Afgewezen"
+  },
+  "ai": {
+    "generating": "AI genereert content...",
+    "improving": "AI verbetert content...",
+    "error": "Er is een fout opgetreden bij het genereren van content",
+    "success": "Content succesvol gegenereerd",
+    "suggestions": "AI-suggesties",
+    "optimize": "Optimaliseren met AI"
+  },
+  "common": {
+    "save": "Opslaan",
+    "cancel": "Annuleren",
+    "delete": "Verwijderen",
+    "edit": "Bewerken",
+    "view": "Bekijken",
+    "download": "Downloaden",
+    "upload": "Uploaden",
+    "search": "Zoeken",
+    "filter": "Filteren",
+    "sort": "Sorteren",
+    "loading": "Laden...",
+    "error": "Fout",
+    "success": "Succes",
+    "warning": "Waarschuwing",
+    "info": "Informatie",
+    "yes": "Ja",
+    "no": "Nee",
+    "close": "Sluiten",
+    "next": "Volgende",
+    "previous": "Vorige",
+    "finish": "Voltooien"
+  },
+  "support": {
+    "needHelp": "Hulp nodig?",
+    "contactSupport": "Contact Ondersteuning",
+    "documentation": "Bekijk Documentatie",
+    "faq": "Veelgestelde Vragen",
+    "email": "E-mail Ondersteuning"
+  },
+  "language": {
+    "switch": "Taal Wijzigen",
+    "dutch": "Nederlands",
+    "english": "English"
+  },
+  "features": {
+    "freeTier": "Gratis tier bevat:",
+    "oneApplication": "1 WBSO-aanvraag per jaar",
+    "aiGeneration": "AI-aangedreven content generatie",
+    "kvkIntegration": "Bedrijfsinstelling met KVK-integratie"
+  }
+} 
