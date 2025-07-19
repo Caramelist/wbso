@@ -143,10 +143,59 @@
     "previous": "Vorige",
     "finish": "Voltooien",
     "viewAll": "Alles Bekijken",
-    "submitted": "Ingediend"
+    "submitted": "Ingediend",
+    "select": "Selecteren"
   },
   "company": {
-    "setupProfile": "Bedrijfsprofiel Instellen"
+    "setupProfile": "Bedrijfsprofiel Instellen",
+    "setup": {
+      "title": "Bedrijf Instellen",
+      "subtitle": "Stel je bedrijfsprofiel in voor WBSO-aanvragen",
+      "complete": "Setup Voltooien",
+      "step1": {
+        "title": "Bedrijfsgegevens",
+        "description": "KVK nummer en basisinformatie"
+      },
+      "step2": {
+        "title": "Contactgegevens",
+        "description": "Adres en contactinformatie"
+      },
+      "step3": {
+        "title": "Bedrijfsdetails",
+        "description": "Branche en R&D informatie"
+      },
+      "step4": {
+        "title": "Overzicht",
+        "description": "Controleer en bevestig"
+      },
+      "review": {
+        "title": "Controleer je gegevens",
+        "disclaimer": "Door verder te gaan, bevestig je dat de verstrekte informatie juist en volledig is."
+      }
+    },
+    "kvkNumber": "KVK Nummer",
+    "name": "Bedrijfsnaam",
+    "legalForm": "Rechtsvorm",
+    "street": "Straatnaam",
+    "houseNumber": "Huisnummer",
+    "postalCode": "Postcode",
+    "city": "Plaats",
+    "address": "Adres",
+    "website": "Website",
+    "phone": "Telefoon",
+    "email": "E-mail",
+    "industry": "Branche",
+    "annualTurnover": "Jaaromzet",
+    "hasRnDDepartment": "Heeft R&D afdeling",
+    "rndEmployees": "Aantal R&D medewerkers",
+    "previousWBSOApplications": "Eerder WBSO aangevraagd",
+    "basicInfo": "Basisinformatie",
+    "contactInfo": "Contactgegevens",
+    "wbsoInfo": "WBSO Informatie",
+    "lookup": "Opzoeken",
+    "kvkError": "Fout bij ophalen KVK gegevens",
+    "invalidKvkNumber": "Ongeldig KVK nummer (8 cijfers vereist)",
+    "demoMode": "Demo modus - echte KVK integratie vereist API sleutel"
   },
   "support": {
     "needHelp": "Hulp nodig?",

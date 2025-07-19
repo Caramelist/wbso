@@ -143,10 +143,59 @@
     "previous": "Previous",
     "finish": "Finish",
     "viewAll": "View All",
-    "submitted": "Submitted"
+    "submitted": "Submitted",
+    "select": "Select"
   },
   "company": {
-    "setupProfile": "Setup Company Profile"
+    "setupProfile": "Setup Company Profile",
+    "setup": {
+      "title": "Company Setup",
+      "subtitle": "Set up your company profile for WBSO applications",
+      "complete": "Complete Setup",
+      "step1": {
+        "title": "Company Details",
+        "description": "KVK number and basic information"
+      },
+      "step2": {
+        "title": "Contact Details",
+        "description": "Address and contact information"
+      },
+      "step3": {
+        "title": "Business Details",
+        "description": "Industry and R&D information"
+      },
+      "step4": {
+        "title": "Review",
+        "description": "Review and confirm"
+      },
+      "review": {
+        "title": "Review your information",
+        "disclaimer": "By proceeding, you confirm that the provided information is accurate and complete."
+      }
+    },
+    "kvkNumber": "KVK Number",
+    "name": "Company Name",
+    "legalForm": "Legal Form",
+    "street": "Street Name",
+    "houseNumber": "House Number",
+    "postalCode": "Postal Code",
+    "city": "City",
+    "address": "Address",
+    "website": "Website",
+    "phone": "Phone",
+    "email": "Email",
+    "industry": "Industry",
+    "annualTurnover": "Annual Turnover",
+    "hasRnDDepartment": "Has R&D Department",
+    "rndEmployees": "Number of R&D Employees",
+    "previousWBSOApplications": "Previous WBSO Applications",
+    "basicInfo": "Basic Information",
+    "contactInfo": "Contact Information",
+    "wbsoInfo": "WBSO Information",
+    "lookup": "Lookup",
+    "kvkError": "Error retrieving KVK data",
+    "invalidKvkNumber": "Invalid KVK number (8 digits required)",
+    "demoMode": "Demo mode - real KVK integration requires API key"
   },
   "support": {
     "needHelp": "Need help?",

@@ -221,9 +221,12 @@ const DashboardOverview: React.FC = () => {
               <button className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-medium transition-colors">
                 {t('wbso.generateWithAI')}
               </button>
-              <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-medium transition-colors">
+              <a 
+                href="/company/setup"
+                className="block w-full bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-3 rounded-lg font-medium transition-colors text-center"
+              >
                 {t('company.setupProfile')}
-              </button>
+              </a>
             </div>
           </div>
 

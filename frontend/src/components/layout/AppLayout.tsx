@@ -30,7 +30,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
     {
       key: 'company',
       icon: '🏢',
-      href: '/company',
+      href: '/company/setup',
       labelKey: 'navigation.company'
     },
     {
