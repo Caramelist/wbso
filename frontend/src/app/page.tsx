@@ -38,6 +38,10 @@ export default function HomePage() {
     }
   };
 
+  const handleGoDashboard = () => {
+    window.location.href = '/dashboard';
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
@@ -80,7 +84,7 @@ export default function HomePage() {
           {/* Demo CTA */}
           <div className="space-y-4">
             <button
-              onClick={handleDemoLogin}
+              onClick={user ? handleGoDashboard : handleDemoLogin}
               disabled={loading}
               className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors disabled:opacity-50"
             >

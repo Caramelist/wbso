@@ -31,6 +31,7 @@
     "loggedInAs": "Logged in as",
     "authRequired": "Firebase authentication not available in demo mode",
     "thisMonth": "this month",
+    "thisYear": "this year",
     "approved": "approved",
     "inProgress": "in progress"
   },
@@ -55,9 +56,18 @@
   "dashboard": {
     "title": "Dashboard",
     "subtitle": "Overview of your WBSO applications and progress",
+    "welcome": "Welcome back",
+    "user": "User",
+    "welcomeMessage": "Manage your WBSO applications and track your progress from one central place",
     "totalApplications": "Total Applications",
     "pendingReview": "Pending Review", 
     "submitted": "Submitted",
+    "totalValue": "Total Value",
+    "recentApplications": "Recent Applications",
+    "quickActions": "Quick Actions",
+    "progress": "Progress",
+    "profileComplete": "Profile Complete",
+    "yearlyTarget": "Yearly Target",
     "approved": "Approved",
     "quickActions": "Quick Actions",
     "newApplication": "New Application",
@@ -77,6 +87,7 @@
   "wbso": {
     "application": "WBSO Application",
     "newApplication": "New WBSO Application",
+    "createApplication": "Create Application",
     "projectTitle": "Project Title",
     "projectDescription": "Project Description",
     "researchActivities": "Research Activities",
@@ -93,7 +104,13 @@
     "review": "Review",
     "submitted": "Submitted",
     "approved": "Approved",
-    "rejected": "Rejected"
+    "rejected": "Rejected",
+    "status": {
+      "draft": "Draft",
+      "submitted": "Submitted",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    }
   },
   "ai": {
     "generating": "AI is generating content...",
@@ -124,7 +141,12 @@
     "close": "Close",
     "next": "Next",
     "previous": "Previous",
-    "finish": "Finish"
+    "finish": "Finish",
+    "viewAll": "View All",
+    "submitted": "Submitted"
+  },
+  "company": {
+    "setupProfile": "Setup Company Profile"
   },
   "support": {
     "needHelp": "Need help?",

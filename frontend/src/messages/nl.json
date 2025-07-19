@@ -31,6 +31,7 @@
     "loggedInAs": "Ingelogd als",
     "authRequired": "Firebase authenticatie niet beschikbaar in demo modus",
     "thisMonth": "deze maand",
+    "thisYear": "dit jaar",
     "approved": "goedgekeurd",
     "inProgress": "in behandeling"
   },
@@ -55,9 +56,18 @@
   "dashboard": {
     "title": "Dashboard",
     "subtitle": "Overzicht van je WBSO-aanvragen en voortgang",
+    "welcome": "Welkom terug",
+    "user": "Gebruiker",
+    "welcomeMessage": "Beheer je WBSO-aanvragen en volg je voortgang vanuit één centrale plek",
     "totalApplications": "Totaal Aanvragen",
     "pendingReview": "Wacht op Goedkeuring",
     "submitted": "Ingediend",
+    "totalValue": "Totale Waarde",
+    "recentApplications": "Recente Aanvragen",
+    "quickActions": "Snelle Acties",
+    "progress": "Voortgang",
+    "profileComplete": "Profiel Compleet",
+    "yearlyTarget": "Jaardoel",
     "approved": "Goedgekeurd",
     "quickActions": "Snelle Acties",
     "newApplication": "Nieuwe Aanvraag",
@@ -77,6 +87,7 @@
   "wbso": {
     "application": "WBSO-aanvraag",
     "newApplication": "Nieuwe WBSO-aanvraag",
+    "createApplication": "Aanvraag Maken",
     "projectTitle": "Projecttitel",
     "projectDescription": "Projectbeschrijving",
     "researchActivities": "Onderzoeksactiviteiten",
@@ -93,7 +104,13 @@
     "review": "Beoordeling",
     "submitted": "Ingediend",
     "approved": "Goedgekeurd",
-    "rejected": "Afgewezen"
+    "rejected": "Afgewezen",
+    "status": {
+      "draft": "Concept",
+      "submitted": "Ingediend",
+      "approved": "Goedgekeurd",
+      "rejected": "Afgewezen"
+    }
   },
   "ai": {
     "generating": "AI genereert content...",
@@ -124,7 +141,12 @@
     "close": "Sluiten",
     "next": "Volgende",
     "previous": "Vorige",
-    "finish": "Voltooien"
+    "finish": "Voltooien",
+    "viewAll": "Alles Bekijken",
+    "submitted": "Ingediend"
+  },
+  "company": {
+    "setupProfile": "Bedrijfsprofiel Instellen"
   },
   "support": {
     "needHelp": "Hulp nodig?",
