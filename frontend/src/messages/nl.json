@@ -163,7 +163,16 @@
     "pdfGenerated": "PDF succesvol gegenereerd!",
     "pdfHint": "De PDF bevat alle ingevoerde informatie in het officiële WBSO-formaat",
     "sectionInDevelopment": "Deze sectie wordt nog ontwikkeld",
-    "period": "Periode"
+    "period": "Periode",
+    "guidanceTitle": "WBSO Succes Tips - Vermijd Afwijzing",
+    "guidancePoint1": "Focus op 'technische nieuwheid' - niet alleen functionele innovatie",
+    "guidancePoint2": "Beschrijf concrete technische problemen die zelfstandig opgelost moeten worden",
+    "guidancePoint3": "Vermijd kopiëren, imiteren of reverse engineering van bestaande technologie",
+    "guidancePoint4": "Gebruik specifieke technische termen en vermijd commerciële taal",
+    "avoidRejection": "Voorkom Afwijzing",
+    "rejectionWarning": "Zorg ervoor dat u concrete technische risico's en onzekerheden beschrijft. Algemene functionaliteit wordt vaak afgewezen.",
+    "successTip": "Succes Tip",
+    "innovationTip": "Beschrijf waarom bestaande oplossingen niet volstaan en welke nieuwe principes/methoden u ontwikkelt."
   },
   "ai": {
     "generating": "AI genereert content...",

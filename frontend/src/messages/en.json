@@ -163,7 +163,16 @@
     "pdfGenerated": "PDF generated successfully!",
     "pdfHint": "The PDF contains all entered information in the official WBSO format",
     "sectionInDevelopment": "This section is still in development",
-    "period": "Period"
+    "period": "Period",
+    "guidanceTitle": "WBSO Success Tips - Avoid Rejection",
+    "guidancePoint1": "Focus on 'technical novelty' - not just functional innovation",
+    "guidancePoint2": "Describe concrete technical problems that must be solved independently",
+    "guidancePoint3": "Avoid copying, imitating or reverse engineering existing technology",
+    "guidancePoint4": "Use specific technical terms and avoid commercial language",
+    "avoidRejection": "Avoid Rejection",
+    "rejectionWarning": "Make sure to describe concrete technical risks and uncertainties. General functionality is often rejected.",
+    "successTip": "Success Tip",
+    "innovationTip": "Describe why existing solutions are insufficient and what new principles/methods you are developing."
   },
   "ai": {
     "generating": "AI is generating content...",
