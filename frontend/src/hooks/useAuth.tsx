@@ -117,6 +117,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Sign in with Google
   const signInWithGoogle = async (): Promise<void> => {
+    if (!auth) {
+      toast.error('Authentication not available in demo mode');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -141,6 +146,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Sign out
   const logout = async (): Promise<void> => {
+    if (!auth) {
+      toast.error('Authentication not available in demo mode');
+      return;
+    }
+
     try {
       setLoading(true);
       await signOut(auth);
@@ -158,6 +168,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Update user profile
   const updateUserProfile = async (updates: Partial<User>): Promise<void> => {
+    if (!db) {
+      toast.error('Database not available in demo mode');
+      return;
+    }
     if (!user) throw new Error('No user logged in');
     
     try {
@@ -201,6 +215,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Listen to Firebase Auth state changes
   useEffect(() => {
+    // If Firebase is not available (development mode without config), just set loading to false
+    if (!auth) {
+      console.log('🔥 Firebase Auth not available - running in demo mode');
+      setLoading(false);
+      return;
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setLoading(true);
       setError(null);

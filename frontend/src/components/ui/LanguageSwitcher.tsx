@@ -1,39 +1,23 @@
 'use client';
 
-import { useTranslations, useLocale } from 'next-intl';
-import { useRouter, usePathname } from 'next/navigation';
-import { useState, useTransition } from 'react';
-import { locales, type Locale } from '@/i18n';
+import { useState } from 'react';
+import { useLanguage, type Locale } from '@/contexts/LanguageContext';
 
 interface LanguageSwitcherProps {
   className?: string;
 }
 
 export default function LanguageSwitcher({ className = '' }: LanguageSwitcherProps) {
-  const t = useTranslations('language');
-  const locale = useLocale();
-  const router = useRouter();
-  const pathname = usePathname();
-  const [isPending, startTransition] = useTransition();
+  const { locale, setLocale, t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
 
   const switchLanguage = (newLocale: Locale) => {
-    startTransition(() => {
-      // Remove the current locale from the pathname
-      const pathWithoutLocale = pathname?.replace(`/${locale}`, '') || '/';
-      
-      // Navigate to the new locale
-      const newPath = newLocale === 'nl' 
-        ? pathWithoutLocale === '/' ? '/' : pathWithoutLocale
-        : `/${newLocale}${pathWithoutLocale}`;
-      
-      router.replace(newPath);
-      setIsOpen(false);
-    });
+    setLocale(newLocale);
+    setIsOpen(false);
   };
 
   const getCurrentLanguageLabel = () => {
-    return locale === 'nl' ? t('dutch') : t('english');
+    return locale === 'nl' ? t('language.dutch') : t('language.english');
   };
 
   const getLanguageFlag = (lang: Locale) => {
@@ -45,8 +29,7 @@ export default function LanguageSwitcher({ className = '' }: LanguageSwitcherPro
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        disabled={isPending}
-        className="inline-flex items-center justify-center w-full px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50"
+        className="inline-flex items-center justify-center w-full px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
         aria-expanded={isOpen}
         aria-haspopup="true"
       >
@@ -68,12 +51,12 @@ export default function LanguageSwitcher({ className = '' }: LanguageSwitcherPro
 
       {isOpen && (
         <div className="absolute right-0 z-50 w-36 mt-2 origin-top-right bg-white border border-gray-200 rounded-md shadow-lg ring-1 ring-black ring-opacity-5">
-          <div className="py-1" role="menu" aria-orientation="vertical">
-            {locales.map((lang) => (
-              <button
-                key={lang}
-                onClick={() => switchLanguage(lang)}
-                disabled={isPending || lang === locale}
+                  <div className="py-1" role="menu" aria-orientation="vertical">
+          {(['nl', 'en'] as const).map((lang: Locale) => (
+            <button
+              key={lang}
+              onClick={() => switchLanguage(lang)}
+              disabled={lang === locale}
                 className={`
                   flex items-center w-full px-4 py-2 text-sm text-left hover:bg-gray-100 focus:outline-none focus:bg-gray-100 disabled:opacity-50
                   ${lang === locale ? 'bg-gray-50 text-primary-600' : 'text-gray-700'}

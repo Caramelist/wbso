@@ -4,6 +4,36 @@
     "tagline": "Transformeer weken van WBSO-papierwerk naar 30 minuten met AI-aangedreven automatisering",
     "description": "Het slimste platform voor WBSO-aanvragen in Nederland"
   },
+  "features": {
+    "dutch": "Nederlands",
+    "aiPowered": "AI-Aangedreven",
+    "fast": "30 Minuten",
+    "wbsoReady": "WBSO Klaar",
+    "aiGeneration": {
+      "title": "AI Tekstgeneratie",
+      "description": "Laat AI automatisch je projectbeschrijvingen en technische details genereren"
+    },
+    "fastProcess": {
+      "title": "Snelle Verwerking",
+      "description": "Van concept tot ingediende aanvraag in minder dan 30 minuten"
+    },
+    "teamManagement": {
+      "title": "Team Beheer",
+      "description": "Beheer teamleden, rollen en goedkeuringen vanuit één dashboard"
+    },
+    "tracking": {
+      "title": "Status Tracking",
+      "description": "Volg de voortgang van al je WBSO-aanvragen in real-time"
+    }
+  },
+  "demo": {
+    "dashboardPreview": "Dashboard Voorbeeld",
+    "loggedInAs": "Ingelogd als",
+    "authRequired": "Firebase authenticatie niet beschikbaar in demo modus",
+    "thisMonth": "deze maand",
+    "approved": "goedgekeurd",
+    "inProgress": "in behandeling"
+  },
   "auth": {
     "welcome": "Welkom Terug",
     "signIn": "Aanmelden",
@@ -107,11 +137,5 @@
     "switch": "Taal Wijzigen",
     "dutch": "Nederlands",
     "english": "English"
-  },
-  "features": {
-    "freeTier": "Gratis tier bevat:",
-    "oneApplication": "1 WBSO-aanvraag per jaar",
-    "aiGeneration": "AI-aangedreven content generatie",
-    "kvkIntegration": "Bedrijfsinstelling met KVK-integratie"
   }
 } 

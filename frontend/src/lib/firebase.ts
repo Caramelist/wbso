@@ -4,8 +4,14 @@ import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
 import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
-// Firebase configuration
-const firebaseConfig = {
+// Check if Firebase configuration is available
+const hasFirebaseConfig = !!(
+  process.env.NEXT_PUBLIC_FIREBASE_API_KEY && 
+  process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+);
+
+// Firebase configuration - only create if we have the required keys
+const firebaseConfig = hasFirebaseConfig ? {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
@@ -13,23 +19,15 @@ const firebaseConfig = {
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
-};
+} : null;
 
-// Validate configuration
-const requiredConfigKeys = [
-  'NEXT_PUBLIC_FIREBASE_API_KEY',
-  'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
-  'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
-  'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
-  'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
-  'NEXT_PUBLIC_FIREBASE_APP_ID',
-];
-
-const missingKeys = requiredConfigKeys.filter(key => !process.env[key]);
-if (missingKeys.length > 0) {
-  throw new Error(
-    `Missing required Firebase configuration keys: ${missingKeys.join(', ')}`
-  );
+// Log Firebase status (only in browser, not during build)
+if (typeof window !== 'undefined') {
+  if (!hasFirebaseConfig) {
+    console.warn('🔥 Firebase not configured - running in demo mode');
+  } else {
+    console.log('🔥 Firebase initialized successfully');
+  }
 }
 
 // Initialize Firebase app (singleton pattern) - only if config is available
@@ -39,8 +37,8 @@ let db: any = null;
 let storage: any = null;
 let functions: any = null;
 
-// Only initialize if we have the basic required config
-if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+// Only initialize if we have valid Firebase config
+if (hasFirebaseConfig && firebaseConfig) {
   app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
   
   // Initialize Firebase services
@@ -53,7 +51,7 @@ if (firebaseConfig.apiKey && firebaseConfig.projectId) {
 export { auth, db, storage, functions };
 
 // Connect to emulators in development (only if Firebase is configured)
-if (process.env.NODE_ENV === 'development' && auth && db && storage && functions) {
+if (process.env.NODE_ENV === 'development' && hasFirebaseConfig && auth && db && storage && functions) {
   const isEmulator = () => {
     try {
       // Check if we're running with emulators
@@ -98,14 +96,14 @@ export default app;
 
 // Helper function to check if Firebase is properly configured
 export const isFirebaseConfigured = () => {
-  return !!(firebaseConfig.apiKey && firebaseConfig.projectId && app);
+  return !!(hasFirebaseConfig && firebaseConfig && app);
 };
 
 // Export configuration for debugging
 export const firebaseConfigDebug = {
-  projectId: firebaseConfig.projectId,
-  authDomain: firebaseConfig.authDomain,
-  storageBucket: firebaseConfig.storageBucket,
+  projectId: firebaseConfig?.projectId || null,
+  authDomain: firebaseConfig?.authDomain || null,
+  storageBucket: firebaseConfig?.storageBucket || null,
   isConfigured: isFirebaseConfigured(),
   environment: process.env.NODE_ENV,
 }; 

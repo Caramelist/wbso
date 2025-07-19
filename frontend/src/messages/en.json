@@ -4,6 +4,36 @@
     "tagline": "Transform weeks of WBSO paperwork into 30 minutes with AI-powered automation",
     "description": "The smartest platform for WBSO applications in the Netherlands"
   },
+  "features": {
+    "dutch": "Dutch Support",
+    "aiPowered": "AI-Powered",
+    "fast": "30 Minutes",
+    "wbsoReady": "WBSO Ready",
+    "aiGeneration": {
+      "title": "AI Text Generation",
+      "description": "Let AI automatically generate your project descriptions and technical details"
+    },
+    "fastProcess": {
+      "title": "Fast Processing",
+      "description": "From concept to submitted application in less than 30 minutes"
+    },
+    "teamManagement": {
+      "title": "Team Management",
+      "description": "Manage team members, roles and approvals from one dashboard"
+    },
+    "tracking": {
+      "title": "Status Tracking",
+      "description": "Track the progress of all your WBSO applications in real-time"
+    }
+  },
+  "demo": {
+    "dashboardPreview": "Dashboard Preview",
+    "loggedInAs": "Logged in as",
+    "authRequired": "Firebase authentication not available in demo mode",
+    "thisMonth": "this month",
+    "approved": "approved",
+    "inProgress": "in progress"
+  },
   "auth": {
     "welcome": "Welcome Back",
     "signIn": "Sign In",
@@ -107,11 +137,5 @@
     "switch": "Switch Language",
     "dutch": "Nederlands", 
     "english": "English"
-  },
-  "features": {
-    "freeTier": "Free tier includes:",
-    "oneApplication": "1 WBSO application per year",
-    "aiGeneration": "AI-powered content generation",
-    "kvkIntegration": "Company setup with KVK integration"
   }
 } 
