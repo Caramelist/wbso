@@ -11,10 +11,9 @@ admin.initializeApp();
 const corsOptions = {
   origin: [
     'http://localhost:3000',
-    'https://wbso-platform.com',
-    'https://wbso-automation-platform.vercel.app',
-    'https://wbso-automation-platform.netlify.app',
-    'https://your-custom-domain.com',
+    'https://app.wbsosimpel.nl',      // Your app platform
+    'https://wbsosimpel.nl',          // Your marketing domain
+    'https://wbso-automation-platform.netlify.app', // Temporary Netlify URL
   ],
   credentials: true,
   optionsSuccessStatus: 200,

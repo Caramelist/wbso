@@ -32,17 +32,28 @@ if (missingKeys.length > 0) {
   );
 }
 
-// Initialize Firebase app (singleton pattern)
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// Initialize Firebase app (singleton pattern) - only if config is available
+let app: any = null;
+let auth: any = null;
+let db: any = null;
+let storage: any = null;
+let functions: any = null;
 
-// Initialize Firebase services
-export const auth = getAuth(app);
-export const db = getFirestore(app);
-export const storage = getStorage(app);
-export const functions = getFunctions(app, 'europe-west1'); // Use European region
+// Only initialize if we have the basic required config
+if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+  
+  // Initialize Firebase services
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
+  functions = getFunctions(app, 'europe-west1'); // Use European region
+}
 
-// Connect to emulators in development
-if (process.env.NODE_ENV === 'development') {
+export { auth, db, storage, functions };
+
+// Connect to emulators in development (only if Firebase is configured)
+if (process.env.NODE_ENV === 'development' && auth && db && storage && functions) {
   const isEmulator = () => {
     try {
       // Check if we're running with emulators
@@ -87,7 +98,7 @@ export default app;
 
 // Helper function to check if Firebase is properly configured
 export const isFirebaseConfigured = () => {
-  return !missingKeys.length && app !== null;
+  return !!(firebaseConfig.apiKey && firebaseConfig.projectId && app);
 };
 
 // Export configuration for debugging
