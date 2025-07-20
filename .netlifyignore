@@ -1,0 +1,31 @@
+# Exclude backend and development files from Netlify deployment
+functions/
+node_modules/
+.env*
+.git/
+.gitignore
+firebase.json
+.firebaserc
+firestore.rules
+storage.rules
+
+# Development files
+*.log
+*.local
+.DS_Store
+.vscode/
+*.swp
+*.swo
+
+# Documentation
+*.md
+!README.md
+
+# Chrome extension
+chrome-extension/
+
+# Build artifacts
+coverage/
+.nyc_output/
+dist/
+build/ 

@@ -127,3 +127,24 @@ export const onApplicationCreate = onDocumentCreated({
 
 // Export admin for other modules
 export { admin }; 
+
+// Export existing functions
+export { 
+  createUser, 
+  getUserProfile,
+  updateCompany,
+  submitWBSOApplication,
+  generateWBSOPDF 
+} from './userManagement';
+
+// Export new lead management functions
+export {
+  captureLead,
+  triggerLeadNurture,
+  sendScheduledEmails,
+  trackConversion,
+  getLeadAnalytics
+} from './leadManagement';
+
+// Export unsubscribe handler
+export { handleUnsubscribe } from './unsubscribe'; 

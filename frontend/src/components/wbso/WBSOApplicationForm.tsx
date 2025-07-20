@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/hooks/useAuth';
+import { useSearchParams } from 'next/navigation';
+import { useLeadConversion, type LeadData } from '@/lib/leadConversion';
 import jsPDF from 'jspdf';
 
 interface WBSOInputs {
@@ -48,10 +50,14 @@ interface GeneratedWBSODocument {
 const WBSOApplicationForm: React.FC = () => {
   const { t } = useLanguage();
   const { user } = useAuth();
+  const searchParams = useSearchParams();
+  const { mapLeadToInputs, decryptToken } = useLeadConversion();
   
   const [currentStep, setCurrentStep] = useState(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStatus, setGenerationStatus] = useState('');
+  const [leadData, setLeadData] = useState<LeadData | null>(null);
+  const [isPreFilled, setIsPreFilled] = useState(false);
   
   // User inputs (minimal)
   const [inputs, setInputs] = useState<WBSOInputs>({
@@ -83,6 +89,32 @@ const WBSOApplicationForm: React.FC = () => {
       netCosts: 0
     }
   });
+
+  // Handle lead token pre-population on component mount
+  useEffect(() => {
+    if (!searchParams) return;
+    
+    const leadToken = searchParams.get('lead_token');
+    const source = searchParams.get('source');
+    
+    if (leadToken && source === 'wbso_check') {
+      try {
+        const decryptedLead = decryptToken(leadToken);
+        if (decryptedLead) {
+          const mappedInputs = mapLeadToInputs(decryptedLead);
+          setInputs(mappedInputs);
+          setLeadData(decryptedLead);
+          setIsPreFilled(true);
+          
+          // Show success message about pre-population
+          setGenerationStatus('✅ Uw gegevens zijn automatisch ingevuld vanaf WBSO Check!');
+        }
+      } catch (error) {
+        console.error('Failed to process lead token:', error);
+        // Continue with empty form
+      }
+    }
+  }, [searchParams, decryptToken, mapLeadToInputs]);
 
   // AI Agent - Generates complete WBSO application from minimal inputs
   const generateWBSODocument = async () => {
@@ -322,184 +354,313 @@ Het verschil met bestaande methoden ligt in het unieke vermogen om ${inputs.prob
 
   const renderStepContent = () => {
     switch (currentStep) {
-      case 1: // Simple Input Form
+      case 1: // Smart Input Form - Adaptive based on user source
         return (
           <div className="space-y-6">
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-blue-800 mb-2">
-                📝 Vul de basisgegevens in
+                {isPreFilled ? '🎯 Laatste details voor uw WBSO-aanvraag' : '📝 Vul de basisgegevens in'}
               </h3>
               <p className="text-blue-700">
-                Onze AI-agent schrijft automatisch uw complete WBSO-aanvraag in professioneel Nederlands.
+                {isPreFilled 
+                  ? 'Wij hebben uw gegevens van de WBSO Check. Vul alleen de ontbrekende details aan.'
+                  : 'Onze AI-agent schrijft automatisch uw complete WBSO-aanvraag in professioneel Nederlands.'
+                }
               </p>
+              {isPreFilled && leadData && (
+                <div className="mt-4 p-4 bg-green-100 border border-green-300 rounded-lg">
+                  <h4 className="font-semibold text-green-800 mb-2">
+                    ✅ Reeds bekend van WBSO Check
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm text-green-700">
+                    <div>
+                      <p><strong>Bedrijf:</strong> {leadData.company_name}</p>
+                      <p><strong>Sector:</strong> {leadData.sbi_description}</p>
+                      <p><strong>Team:</strong> {leadData.technical_staff_count} personen</p>
+                    </div>
+                    <div>
+                      <p><strong>Berekende subsidie:</strong> €{leadData.calculated_subsidy?.toLocaleString()}</p>
+                      <p><strong>Project type:</strong> {inputs.projectType === 'development' ? 'Ontwikkeling' : 'Onderzoek'}</p>
+                      <p><strong>Duur:</strong> {inputs.expectedDuration} maanden</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-green-600 mt-2">
+                    💡 U hoeft deze gegevens niet opnieuw in te vullen!
+                  </p>
+                </div>
+              )}
             </div>
 
-            {/* Project Basics */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h4 className="font-semibold text-gray-900 mb-4">Project Informatie</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Project naam
-                  </label>
-                  <input
-                    type="text"
-                    value={inputs.projectTitle}
-                    onChange={(e) => updateInput('projectTitle', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="AI-gedreven voorraadoptimalisatie"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Type project
-                  </label>
-                  <select
-                    value={inputs.projectType}
-                    onChange={(e) => updateInput('projectType', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Selecteer</option>
-                    <option value="development">Ontwikkelingsproject</option>
-                    <option value="research">Technisch onderzoek</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Start datum
-                  </label>
-                  <input
-                    type="date"
-                    value={inputs.startDate}
-                    onChange={(e) => updateInput('startDate', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Eind datum
-                  </label>
-                  <input
-                    type="date"
-                    value={inputs.endDate}
-                    onChange={(e) => updateInput('endDate', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-            </div>
+            {/* Conditional rendering based on lead source */}
+            {isPreFilled ? (
+              // MINIMAL FORM for lead magnet users
+              <div className="space-y-6">
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h4 className="font-semibold text-gray-900 mb-4">
+                    🎯 Alleen deze details ontbreken nog
+                  </h4>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Geef uw project een naam
+                      </label>
+                      <input
+                        type="text"
+                        value={inputs.projectTitle}
+                        onChange={(e) => updateInput('projectTitle', e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder={`${inputs.companyName} ${leadData?.technical_problems?.[0] || 'innovatie'} project`}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Bijvoorbeeld: "{inputs.companyName} AI automatisering" of "Slimme voorraad optimalisatie"
+                      </p>
+                    </div>
 
-            {/* Company Info */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h4 className="font-semibold text-gray-900 mb-4">Bedrijf</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Bedrijfsnaam
-                  </label>
-                  <input
-                    type="text"
-                    value={inputs.companyName}
-                    onChange={(e) => updateInput('companyName', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="TechNova B.V."
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Sector/Branche
-                  </label>
-                  <input
-                    type="text"
-                    value={inputs.companySector}
-                    onChange={(e) => updateInput('companySector', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Software ontwikkeling"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    R&D Team
-                  </label>
-                  <input
-                    type="text"
-                    value={inputs.teamSize}
-                    onChange={(e) => updateInput('teamSize', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="3 developers, 1 data scientist"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Geschat budget (€)
-                  </label>
-                  <input
-                    type="number"
-                    value={inputs.estimatedBudget}
-                    onChange={(e) => updateInput('estimatedBudget', e.target.value)}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="150000"
-                  />
-                </div>
-              </div>
-            </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Beschrijf kort uw specifieke technische oplossing
+                      </label>
+                      <textarea
+                        value={inputs.proposedSolution}
+                        onChange={(e) => updateInput('proposedSolution', e.target.value)}
+                        rows={3}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Hybride AI-systeem dat machine learning combineert met real-time data voor automatische voorspellingen"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        💡 Tip: Beschrijf de technische aanpak, niet het probleem (dat kennen we al)
+                      </p>
+                    </div>
 
-            {/* Project Content */}
-            <div className="bg-white border border-gray-200 rounded-lg p-6">
-              <h4 className="font-semibold text-gray-900 mb-4">Project Inhoud</h4>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Welk technisch probleem lost u op?
-                  </label>
-                  <textarea
-                    value={inputs.problemDescription}
-                    onChange={(e) => updateInput('problemDescription', e.target.value)}
-                    rows={3}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Voorraadniveaus voorspellen met onvoorspelbare vraagpatronen en seizoensinvloeden"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Wat is uw technische oplossing?
-                  </label>
-                  <textarea
-                    value={inputs.proposedSolution}
-                    onChange={(e) => updateInput('proposedSolution', e.target.value)}
-                    rows={3}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Hybride AI-algoritme dat deep learning combineert met real-time marktdata en externe factoren"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Waarom is dit technisch nieuw/innovatief?
-                  </label>
-                  <textarea
-                    value={inputs.whyInnovative}
-                    onChange={(e) => updateInput('whyInnovative', e.target.value)}
-                    rows={2}
-                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Bestaande methoden kunnen niet omgaan met real-time aanpassingen en multi-variabele voorspellingen"
-                  />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Projectduur (maanden)
-                    </label>
-                    <input
-                      type="number"
-                      value={inputs.expectedDuration}
-                      onChange={(e) => updateInput('expectedDuration', e.target.value)}
-                      className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="18"
-                    />
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Waarom is deze technische oplossing nieuw/innovatief?
+                      </label>
+                      <textarea
+                        value={inputs.whyInnovative}
+                        onChange={(e) => updateInput('whyInnovative', e.target.value)}
+                        rows={2}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Bestaande oplossingen kunnen niet omgaan met real-time aanpassingen en complexe voorspellingen tegelijkertijd"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Gewenste start datum
+                        </label>
+                        <input
+                          type="date"
+                          value={inputs.startDate}
+                          onChange={(e) => updateInput('startDate', e.target.value)}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Verwachte eind datum
+                        </label>
+                        <input
+                          type="date"
+                          value={inputs.endDate}
+                          onChange={(e) => updateInput('endDate', e.target.value)}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h5 className="font-medium text-blue-800 mb-2">⚡ Snellere aanvraag dankzij WBSO Check</h5>
+                  <p className="text-sm text-blue-700">
+                    Normaal zouden we 12+ vragen stellen, maar dankzij uw WBSO Check hoeven we alleen 
+                    deze 4 details nog te weten. De rest wordt automatisch ingevuld! 🚀
+                  </p>
+                </div>
               </div>
-            </div>
+            ) : (
+              // FULL FORM for direct users
+              <div className="space-y-6">
+                {/* Project Basics */}
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h4 className="font-semibold text-gray-900 mb-4">Project Informatie</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Project naam
+                      </label>
+                      <input
+                        type="text"
+                        value={inputs.projectTitle}
+                        onChange={(e) => updateInput('projectTitle', e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="AI-gedreven voorraadoptimalisatie"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Type project
+                      </label>
+                      <select
+                        value={inputs.projectType}
+                        onChange={(e) => updateInput('projectType', e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="">Selecteer</option>
+                        <option value="development">Ontwikkelingsproject</option>
+                        <option value="research">Technisch onderzoek</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Start datum
+                      </label>
+                      <input
+                        type="date"
+                        value={inputs.startDate}
+                        onChange={(e) => updateInput('startDate', e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Eind datum
+                      </label>
+                      <input
+                        type="date"
+                        value={inputs.endDate}
+                        onChange={(e) => updateInput('endDate', e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Company Info */}
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h4 className="font-semibold text-gray-900 mb-4">Bedrijf</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Bedrijfsnaam
+                      </label>
+                      <input
+                        type="text"
+                        value={inputs.companyName}
+                        onChange={(e) => updateInput('companyName', e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="TechNova B.V."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Sector/Branche
+                      </label>
+                      <input
+                        type="text"
+                        value={inputs.companySector}
+                        onChange={(e) => updateInput('companySector', e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Software ontwikkeling"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        R&D Team
+                      </label>
+                      <input
+                        type="text"
+                        value={inputs.teamSize}
+                        onChange={(e) => updateInput('teamSize', e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="3 developers, 1 data scientist"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Geschat budget (€)
+                      </label>
+                      <input
+                        type="number"
+                        value={inputs.estimatedBudget}
+                        onChange={(e) => updateInput('estimatedBudget', e.target.value)}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="150000"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Project Content */}
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <h4 className="font-semibold text-gray-900 mb-4">Project Inhoud</h4>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Welk technisch probleem lost u op?
+                      </label>
+                      <textarea
+                        value={inputs.problemDescription}
+                        onChange={(e) => updateInput('problemDescription', e.target.value)}
+                        rows={3}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Voorraadniveaus voorspellen met onvoorspelbare vraagpatronen en seizoensinvloeden"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Wat is uw technische oplossing?
+                      </label>
+                      <textarea
+                        value={inputs.proposedSolution}
+                        onChange={(e) => updateInput('proposedSolution', e.target.value)}
+                        rows={3}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Hybride AI-algoritme dat deep learning combineert met real-time marktdata en externe factoren"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Waarom is dit technisch nieuw/innovatief?
+                      </label>
+                      <textarea
+                        value={inputs.whyInnovative}
+                        onChange={(e) => updateInput('whyInnovative', e.target.value)}
+                        rows={2}
+                        className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Bestaande methoden kunnen niet omgaan met real-time aanpassingen en multi-variabele voorspellingen"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Projectduur (maanden)
+                        </label>
+                        <input
+                          type="number"
+                          value={inputs.expectedDuration}
+                          onChange={(e) => updateInput('expectedDuration', e.target.value)}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="18"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                  <h5 className="font-medium text-yellow-800 mb-2">💡 Tip: Bespaar tijd met onze WBSO Check</h5>
+                  <p className="text-sm text-yellow-700">
+                    Wist u dat u deze vragen kunt overslaan door eerst onze <strong>gratis WBSO Check</strong> te doen? 
+                    Dan vullen we automatisch 80% van deze gegevens in! 
+                    <a href="/wbso-check" className="underline font-medium">Probeer de WBSO Check →</a>
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         );
 
@@ -638,8 +799,15 @@ Het verschil met bestaande methoden ligt in het unieke vermogen om ${inputs.prob
 
   const isStepValid = () => {
     if (currentStep === 1) {
-      return inputs.projectTitle && inputs.projectType && inputs.companyName && 
-             inputs.problemDescription && inputs.proposedSolution && inputs.whyInnovative;
+      if (isPreFilled) {
+        // Lead magnet users: Only need project title, solution, innovation reason, and dates
+        return inputs.projectTitle && inputs.proposedSolution && inputs.whyInnovative && 
+               inputs.startDate && inputs.endDate;
+      } else {
+        // Direct users: Need all basic information
+        return inputs.projectTitle && inputs.projectType && inputs.companyName && 
+               inputs.problemDescription && inputs.proposedSolution && inputs.whyInnovative;
+      }
     }
     return true;
   };
@@ -649,11 +817,15 @@ Het verschil met bestaande methoden ligt in het unieke vermogen om ${inputs.prob
       {/* Progress */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-4">
-          {[
+          {(isPreFilled ? [
+            { step: 1, title: 'Details Aanvullen', desc: 'Laatste gegevens invullen' },
+            { step: 2, title: 'AI Generatie', desc: 'Agent schrijft aanvraag' },
+            { step: 3, title: 'Download', desc: 'Complete WBSO PDF' }
+          ] : [
             { step: 1, title: 'Basis Gegevens', desc: 'Vul eenvoudige velden in' },
             { step: 2, title: 'AI Generatie', desc: 'Agent schrijft aanvraag' },
             { step: 3, title: 'Download', desc: 'Complete WBSO PDF' }
-          ].map((item, index) => (
+          ]).map((item, index) => (
             <div key={item.step} className="flex-1">
               <div className="flex items-center">
                 <div className={`
@@ -706,7 +878,7 @@ Het verschil met bestaande methoden ligt in het unieke vermogen om ${inputs.prob
             disabled={!isStepValid()}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Genereer Aanvraag →
+            {isPreFilled ? 'Aanvraag Genereren ⚡' : 'Volgende: Genereren →'}
           </button>
         ) : currentStep === 2 ? (
           <div></div>
