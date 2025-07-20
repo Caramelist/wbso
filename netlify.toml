@@ -1,7 +1,7 @@
 [build]
   base = "frontend"
   command = "npm ci --include=dev && npm run build"
-  publish = ".next"
+  publish = "out"
   
 [build.environment]
   NODE_VERSION = "20"
@@ -11,7 +11,7 @@
 [build.processing]
   skip_processing = false
 
-# Redirect all routes to index.html for SPA
+# Redirect all routes for Next.js static export SPA
 [[redirects]]
   from = "/*"
   to = "/index.html"
