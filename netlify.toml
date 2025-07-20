@@ -1,11 +1,11 @@
 [build]
   base = "frontend"
-  command = "npm ci && npm run build"
+  command = "npm ci --include=dev && npm run build"
   publish = ".next"
   
 [build.environment]
   NODE_VERSION = "20"
-  NPM_FLAGS = "--production=false"
+  NPM_FLAGS = "--include=dev"
 
 # Exclude functions directory from build
 [build.processing]
