@@ -1,13 +1,15 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/ui/LanguageSwitcher';
+import AuthForm from '@/components/auth/AuthForm';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function HomePage() {
   const { t, locale } = useLanguage();
-  const { signInWithGoogle, user, loading } = useAuth();
+  const { user, loading } = useAuth();
+  const [showAuthForm, setShowAuthForm] = useState(false);
 
   // Debug: Check Firebase config availability
   const hasFirebaseConfig = !!(
@@ -38,10 +40,9 @@ export default function HomePage() {
     }
   ];
 
-  const handleDemoLogin = () => {
-    if (!user) {
-      signInWithGoogle();
-    }
+  const handleAuthSuccess = () => {
+    setShowAuthForm(false);
+    window.location.href = '/dashboard';
   };
 
   const handleGoDashboard = () => {
@@ -61,6 +62,21 @@ export default function HomePage() {
         </div>
       </header>
 
+      {/* Auth Modal */}
+      {showAuthForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="relative max-w-md w-full">
+            <button
+              onClick={() => setShowAuthForm(false)}
+              className="absolute -top-4 -right-4 bg-white rounded-full p-2 text-gray-500 hover:text-gray-700 z-10"
+            >
+              ✕
+            </button>
+            <AuthForm onSuccess={handleAuthSuccess} />
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <main className="container mx-auto px-6 py-12">
         <div className="text-center mb-16">
@@ -79,15 +95,27 @@ export default function HomePage() {
           )}
 
           <div className="space-y-4">
-            <button
-              onClick={user ? handleGoDashboard : handleDemoLogin}
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors disabled:opacity-50"
-            >
-              {loading ? t('auth.loading') : user ? t('dashboard.title') : t('auth.signIn')}
-            </button>
+            {user ? (
+              <button
+                onClick={handleGoDashboard}
+                className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors"
+              >
+                🎯 {t('dashboard.title')}
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowAuthForm(true)}
+                disabled={loading}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors disabled:opacity-50"
+              >
+                {loading ? t('auth.loading') : '🚀 Get Started'}
+              </button>
+            )}
             <p className="text-sm text-gray-500">
-              {user ? t('demo.loggedInAs') + ' ' + user.email : (hasFirebaseConfig ? 'Ready for authentication' : t('demo.authRequired'))}
+              {user ? 
+                `Welkom terug, ${user.displayName || user.email}!` : 
+                (hasFirebaseConfig ? 'Choose Google or email authentication' : t('demo.authRequired'))
+              }
             </p>
           </div>
         </div>

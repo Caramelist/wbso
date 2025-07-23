@@ -4,6 +4,10 @@ import { useState, useEffect, useContext, createContext, ReactNode } from 'react
 import {
   User as FirebaseUser,
   signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  updateProfile,
   GoogleAuthProvider,
   signOut,
   onAuthStateChanged,
@@ -20,6 +24,9 @@ interface AuthContextType {
   loading: boolean;
   error: string | null;
   signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (email: string, password: string, displayName?: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUserProfile: (updates: Partial<User>) => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -144,6 +151,123 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  // Sign in with Email/Password
+  const signInWithEmail = async (email: string, password: string): Promise<void> => {
+    if (!auth) {
+      toast.error('Authentication not available in demo mode');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const result: UserCredential = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = result.user;
+      
+      if (firebaseUser) {
+        const userProfile = await fetchUserProfile(firebaseUser) || await createUserProfile(firebaseUser);
+        setUser(userProfile);
+        
+        toast.success(`Welcome back ${userProfile.displayName || userProfile.email}!`);
+      }
+    } catch (error: any) {
+      console.error('Error signing in with email:', error);
+      let errorMessage = 'Failed to sign in. Please try again.';
+      
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email address.';
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password. Please try again.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address.';
+      }
+      
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Sign up with Email/Password
+  const signUpWithEmail = async (email: string, password: string, displayName?: string): Promise<void> => {
+    if (!auth) {
+      toast.error('Authentication not available in demo mode');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const result: UserCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const firebaseUser = result.user;
+      
+      if (firebaseUser) {
+        // Update display name if provided
+        if (displayName) {
+          await updateProfile(firebaseUser, { displayName });
+        }
+        
+        const userProfile = await createUserProfile(firebaseUser);
+        if (displayName) {
+          userProfile.displayName = displayName;
+          await updateUserProfile({ displayName });
+        }
+        
+        setUser(userProfile);
+        toast.success(`Welcome to WBSO Simpel, ${displayName || email}!`);
+      }
+    } catch (error: any) {
+      console.error('Error signing up with email:', error);
+      let errorMessage = 'Failed to create account. Please try again.';
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = 'An account with this email already exists.';
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = 'Password should be at least 6 characters.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address.';
+      }
+      
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Reset Password
+  const resetPassword = async (email: string): Promise<void> => {
+    if (!auth) {
+      toast.error('Authentication not available in demo mode');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      await sendPasswordResetEmail(auth, email);
+      toast.success('Password reset email sent! Check your inbox.');
+    } catch (error: any) {
+      console.error('Error sending password reset email:', error);
+      let errorMessage = 'Failed to send reset email. Please try again.';
+      
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = 'No account found with this email address.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address.';
+      }
+      
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Sign out
   const logout = async (): Promise<void> => {
     if (!auth) {
@@ -259,6 +383,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     loading,
     error,
     signInWithGoogle,
+    signInWithEmail,
+    signUpWithEmail,
+    resetPassword,
     logout,
     updateUserProfile,
     refreshUser,
