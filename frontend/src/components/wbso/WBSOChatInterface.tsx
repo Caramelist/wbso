@@ -174,12 +174,12 @@ const WBSOChatInterface: React.FC = () => {
       console.error('Failed to initialize chat:', error);
       let errorContent = 'Sorry, er is een fout opgetreden bij het opstarten van de chat.';
       
-      const errorMessage = getErrorMessage(error);
-      if (errorMessage.includes('Rate limit')) {
+      const errorText = getErrorMessage(error);
+      if (errorText.includes('Rate limit')) {
         errorContent = 'Te veel verzoeken. Probeer het over een paar minuten opnieuw.';
-      } else if (errorMessage.includes('authentication')) {
+      } else if (errorText.includes('authentication')) {
         errorContent = 'Authenticatie vereist. Log opnieuw in.';
-      } else if (errorMessage.includes('Daily usage limit')) {
+      } else if (errorText.includes('Daily usage limit')) {
         errorContent = 'Dagelijkse gebruikslimiet bereikt. Probeer het morgen opnieuw.';
       }
       
@@ -250,12 +250,12 @@ const WBSOChatInterface: React.FC = () => {
       console.error('Failed to send message:', error);
       let errorContent = 'Sorry, er is een fout opgetreden. Probeer het opnieuw.';
       
-      const errorMessage = getErrorMessage(error);
-      if (errorMessage.includes('Rate limit')) {
+      const errorText = getErrorMessage(error);
+      if (errorText.includes('Rate limit')) {
         errorContent = 'Te veel berichten. Wacht even voordat u een nieuw bericht stuurt.';
-      } else if (errorMessage.includes('Daily usage limit')) {
+      } else if (errorText.includes('Daily usage limit')) {
         errorContent = 'Dagelijkse gebruikslimiet bereikt. Probeer het morgen opnieuw.';
-      } else if (errorMessage.includes('Access denied')) {
+      } else if (errorText.includes('Access denied')) {
         errorContent = 'Toegang geweigerd. Start een nieuwe conversatie.';
       }
       
@@ -313,10 +313,10 @@ const WBSOChatInterface: React.FC = () => {
       console.error('Failed to generate application:', error);
       let errorContent = 'Sorry, er is een fout opgetreden bij het genereren van de aanvraag.';
       
-      const errorMessage = getErrorMessage(error);
-      if (errorMessage.includes('Generation limit')) {
+      const errorText = getErrorMessage(error);
+      if (errorText.includes('Generation limit')) {
         errorContent = 'Dagelijkse generatielimiet bereikt. U kunt morgen weer nieuwe aanvragen genereren.';
-      } else if (errorMessage.includes('Service temporarily unavailable')) {
+      } else if (errorText.includes('Service temporarily unavailable')) {
         errorContent = 'Service tijdelijk niet beschikbaar vanwege hoog gebruik. Probeer het later opnieuw.';
       }
       
