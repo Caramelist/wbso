@@ -9,6 +9,12 @@ export default function HomePage() {
   const { t, locale } = useLanguage();
   const { signInWithGoogle, user, loading } = useAuth();
 
+  // Debug: Check Firebase config availability
+  const hasFirebaseConfig = !!(
+    process.env.NEXT_PUBLIC_FIREBASE_API_KEY && 
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+  );
+
   const features = [
     {
       icon: '🤖',
@@ -45,43 +51,41 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       {/* Header */}
-      <header className="flex justify-between items-center p-6">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-sm">W</span>
+      <header className="container mx-auto px-6 py-8">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center space-x-3">
+            <div className="text-3xl font-bold text-blue-600">🚀</div>
+            <h1 className="text-2xl font-bold text-gray-800">{t('app.name')}</h1>
           </div>
-          <span className="font-semibold text-gray-800">{t('app.name')}</span>
+          <LanguageSwitcher />
         </div>
-        <LanguageSwitcher />
       </header>
 
       {/* Hero Section */}
-      <div className="max-w-6xl mx-auto px-6 py-12">
+      <main className="container mx-auto px-6 py-12">
         <div className="text-center mb-16">
-          <h1 className="text-5xl md:text-7xl font-bold text-gray-900 mb-6">
-            {t('app.name')}
-          </h1>
-          <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed">
+          <h1 className="text-5xl font-bold text-gray-800 mb-6 leading-tight">
             {t('app.tagline')}
+          </h1>
+          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+            {t('app.description')}
           </p>
-          
-          {/* Status badges */}
-          <div className="flex flex-wrap justify-center gap-3 mb-12">
-            <span className="bg-green-100 text-green-800 px-4 py-2 rounded-full font-medium">
-              🇳🇱 {t('features.dutch')}
-            </span>
-            <span className="bg-blue-100 text-blue-800 px-4 py-2 rounded-full font-medium">
-              🤖 {t('features.aiPowered')}
-            </span>
-            <span className="bg-purple-100 text-purple-800 px-4 py-2 rounded-full font-medium">
-              ⚡ {t('features.fast')}
-            </span>
-            <span className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full font-medium">
-              📋 {t('features.wbsoReady')}
-            </span>
+
+          {/* Debug Info */}
+          <div className="mb-8 p-4 bg-white rounded-lg shadow-sm border max-w-md mx-auto">
+            <h3 className="font-semibold text-gray-800 mb-2">🔥 Firebase Status</h3>
+            <div className="text-sm">
+              <div className={`flex items-center justify-between py-1 ${hasFirebaseConfig ? 'text-green-600' : 'text-orange-600'}`}>
+                <span>Configuration:</span>
+                <span className="font-mono">{hasFirebaseConfig ? '✅ Available' : '❌ Missing'}</span>
+              </div>
+              <div className="text-xs text-gray-500 mt-2">
+                API Key: {process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? '✅ Set' : '❌ Missing'}<br/>
+                Project ID: {process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ? '✅ Set' : '❌ Missing'}
+              </div>
+            </div>
           </div>
 
-          {/* Demo CTA */}
           <div className="space-y-4">
             <button
               onClick={user ? handleGoDashboard : handleDemoLogin}
@@ -91,7 +95,7 @@ export default function HomePage() {
               {loading ? t('auth.loading') : user ? t('dashboard.title') : t('auth.signIn')}
             </button>
             <p className="text-sm text-gray-500">
-              {user ? t('demo.loggedInAs') + ' ' + user.email : t('demo.authRequired')}
+              {user ? t('demo.loggedInAs') + ' ' + user.email : (hasFirebaseConfig ? 'Ready for authentication' : t('demo.authRequired'))}
             </p>
           </div>
         </div>
@@ -112,35 +116,47 @@ export default function HomePage() {
         </div>
 
         {/* Demo Dashboard Preview */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white rounded-xl shadow-lg p-8 mb-16">
           <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">
             {t('demo.dashboardPreview')}
           </h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-blue-50 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-blue-800">{t('dashboard.totalApplications')}</h3>
-                <span className="text-3xl font-bold text-blue-600">12</span>
+          
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-green-100 text-sm">{t('demo.approved')}</p>
+                  <p className="text-3xl font-bold">€127K</p>
+                  <p className="text-green-100 text-sm">{t('demo.thisYear')}</p>
+                </div>
+                <div className="text-4xl opacity-80">✅</div>
               </div>
-              <p className="text-blue-600 text-sm">+3 {t('demo.thisMonth')}</p>
             </div>
-            <div className="bg-green-50 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-green-800">{t('dashboard.submitted')}</h3>
-                <span className="text-3xl font-bold text-green-600">8</span>
+            
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-blue-100 text-sm">{t('demo.inProgress')}</p>
+                  <p className="text-3xl font-bold">3</p>
+                  <p className="text-blue-100 text-sm">{t('demo.thisMonth')}</p>
+                </div>
+                <div className="text-4xl opacity-80">⏳</div>
               </div>
-              <p className="text-green-600 text-sm">{t('demo.approved')}</p>
             </div>
-            <div className="bg-yellow-50 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-yellow-800">{t('dashboard.pendingReview')}</h3>
-                <span className="text-3xl font-bold text-yellow-600">4</span>
+            
+            <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-purple-100 text-sm">Team Members</p>
+                  <p className="text-3xl font-bold">12</p>
+                  <p className="text-purple-100 text-sm">Active</p>
+                </div>
+                <div className="text-4xl opacity-80">👥</div>
               </div>
-              <p className="text-yellow-600 text-sm">{t('demo.inProgress')}</p>
             </div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 } 
