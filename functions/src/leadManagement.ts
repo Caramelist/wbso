@@ -4,6 +4,7 @@ import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import * as nodemailer from 'nodemailer';
 import * as jwt from 'jsonwebtoken';
+import { getAuth } from 'firebase-admin/auth';
 
 // Initialize Firebase Admin
 initializeApp();
@@ -273,13 +274,42 @@ async function scheduleEmail(
   });
 }
 
-// 📬 EMAIL SENDER
+// 📬 EMAIL SENDER - Should be internal only
 export const sendScheduledEmails = onRequest(
   {
     region: 'europe-west1'
   },
   async (req, res) => {
     try {
+      // Security: Only allow calls from Firebase Functions or with admin privileges
+      const authHeader = req.headers.authorization;
+      const isInternalCall = req.headers['x-internal-call'] === process.env.INTERNAL_CALL_SECRET;
+      
+      if (!authHeader && !isInternalCall) {
+        res.status(401).json({ error: 'Unauthorized: Internal function only' });
+        return;
+      }
+      
+      if (authHeader) {
+        // If called with auth header, verify it's an admin user
+        try {
+          const token = authHeader.substring(7);
+          const decodedToken = await getAuth().verifyIdToken(token);
+          
+          // Check if user has admin privileges (you can customize this logic)
+          const userDoc = await db.collection('users').doc(decodedToken.uid).get();
+          const userData = userDoc.data();
+          
+          if (!userData?.role || userData.role !== 'admin') {
+            res.status(403).json({ error: 'Forbidden: Admin access required' });
+            return;
+          }
+        } catch (error) {
+          res.status(401).json({ error: 'Invalid authentication token' });
+          return;
+        }
+      }
+      
       const now = new Date();
       
       // Get pending emails that are due
@@ -335,25 +365,12 @@ export const sendScheduledEmails = onRequest(
             sent_at: new Date()
           });
           
-          // Track interaction
-          const interactionRef = db.collection('lead_interactions').doc();
-          batch.set(interactionRef, {
-            lead_id: emailData.lead_id,
-            interaction_type: 'email_sent',
-            interaction_data: {
-              template: emailData.template,
-              campaign_type: emailData.campaign_type
-            },
-            created_at: new Date()
-          });
-          
-        } catch (error) {
-          console.error(`Error sending email ${emailDoc.id}:`, error);
-          
+        } catch (emailError) {
+          console.error('Email send error:', emailError);
           // Mark as failed
           batch.update(emailDoc.ref, {
             status: 'failed',
-            error_message: error instanceof Error ? error.message : 'Unknown error',
+            error: emailError.message,
             failed_at: new Date()
           });
         }
@@ -361,13 +378,13 @@ export const sendScheduledEmails = onRequest(
       
       await batch.commit();
       
-      res.status(200).json({
-        message: 'Email batch processed',
-        processed: pendingEmails.size
+      res.status(200).json({ 
+        message: `Processed ${pendingEmails.size} emails`,
+        sent: pendingEmails.size
       });
       
     } catch (error) {
-      console.error('Scheduled email error:', error);
+      console.error('Send emails error:', error);
       res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -494,7 +511,7 @@ export const trackConversion = onDocumentCreated(
   }
 );
 
-// 📊 ANALYTICS ENDPOINT
+// �� ANALYTICS ENDPOINT - Add rate limiting
 export const getLeadAnalytics = onRequest(
   { 
     cors: true,
@@ -502,6 +519,28 @@ export const getLeadAnalytics = onRequest(
   },
   async (req, res) => {
     try {
+      // Add basic rate limiting for analytics
+      const clientIp = req.ip || req.connection.remoteAddress;
+      const rateLimitKey = `analytics_${clientIp}`;
+      const now = Date.now();
+      const oneHour = 60 * 60 * 1000;
+      
+      // Simple in-memory rate limiting (you could enhance with Firestore)
+      if (!global.analyticsRateLimit) {
+        global.analyticsRateLimit = new Map();
+      }
+      
+      const userRequests = global.analyticsRateLimit.get(rateLimitKey) || [];
+      const recentRequests = userRequests.filter(timestamp => now - timestamp < oneHour);
+      
+      if (recentRequests.length >= 10) { // 10 requests per hour
+        res.status(429).json({ error: 'Rate limit exceeded. Max 10 requests per hour.' });
+        return;
+      }
+      
+      recentRequests.push(now);
+      global.analyticsRateLimit.set(rateLimitKey, recentRequests);
+      
       // Get lead statistics
       const leadsSnapshot = await db.collection('leads').get();
       const conversionsSnapshot = await db.collection('leads')
