@@ -61,9 +61,8 @@ export default function RootLayout({ children }: Props) {
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <meta name="format-detection" content="telephone=no" />
         
-        {/* Security headers */}
+        {/* Security headers (X-Frame-Options now set via HTTP headers in netlify.toml) */}
         <meta httpEquiv="X-Content-Type-Options" content="nosniff" />
-        <meta httpEquiv="X-Frame-Options" content="DENY" />
         <meta httpEquiv="X-XSS-Protection" content="1; mode=block" />
         <meta name="referrer" content="strict-origin-when-cross-origin" />
       </head>

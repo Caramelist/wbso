@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
-    "export": "next build && next export"
+    "export": "next build && next export",
+    "serve": "npx serve out -l 3000"
   },
   "dependencies": {
     "@headlessui/react": "^1.7.17",

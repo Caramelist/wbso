@@ -71,20 +71,12 @@ export default function HomePage() {
             {t('app.description')}
           </p>
 
-          {/* Debug Info */}
-          <div className="mb-8 p-4 bg-white rounded-lg shadow-sm border max-w-md mx-auto">
-            <h3 className="font-semibold text-gray-800 mb-2">🔥 Firebase Status</h3>
-            <div className="text-sm">
-              <div className={`flex items-center justify-between py-1 ${hasFirebaseConfig ? 'text-green-600' : 'text-orange-600'}`}>
-                <span>Configuration:</span>
-                <span className="font-mono">{hasFirebaseConfig ? '✅ Available' : '❌ Missing'}</span>
-              </div>
-              <div className="text-xs text-gray-500 mt-2">
-                API Key: {process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? '✅ Set' : '❌ Missing'}<br/>
-                Project ID: {process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ? '✅ Set' : '❌ Missing'}
-              </div>
+          {/* Success badge - Firebase is working! */}
+          {hasFirebaseConfig && (
+            <div className="mb-6 inline-block px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+              🔥 Authentication Ready
             </div>
-          </div>
+          )}
 
           <div className="space-y-4">
             <button
