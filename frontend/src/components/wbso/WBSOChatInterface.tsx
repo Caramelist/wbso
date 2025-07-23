@@ -49,6 +49,14 @@ const WBSOChatInterface: React.FC = () => {
   const { user, firebaseUser } = useAuth();
   const searchParams = useSearchParams();
   const { mapLeadToInputs, decryptToken } = useLeadConversion();
+
+  // Helper function to safely get error message
+  const getErrorMessage = (error: unknown): string => {
+    if (error instanceof Error) {
+      return error.message;
+    }
+    return String(error);
+  };
   
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -166,11 +174,12 @@ const WBSOChatInterface: React.FC = () => {
       console.error('Failed to initialize chat:', error);
       let errorContent = 'Sorry, er is een fout opgetreden bij het opstarten van de chat.';
       
-      if (error.message.includes('Rate limit')) {
+      const errorMessage = getErrorMessage(error);
+      if (errorMessage.includes('Rate limit')) {
         errorContent = 'Te veel verzoeken. Probeer het over een paar minuten opnieuw.';
-      } else if (error.message.includes('authentication')) {
+      } else if (errorMessage.includes('authentication')) {
         errorContent = 'Authenticatie vereist. Log opnieuw in.';
-      } else if (error.message.includes('Daily usage limit')) {
+      } else if (errorMessage.includes('Daily usage limit')) {
         errorContent = 'Dagelijkse gebruikslimiet bereikt. Probeer het morgen opnieuw.';
       }
       
@@ -241,11 +250,12 @@ const WBSOChatInterface: React.FC = () => {
       console.error('Failed to send message:', error);
       let errorContent = 'Sorry, er is een fout opgetreden. Probeer het opnieuw.';
       
-      if (error.message.includes('Rate limit')) {
+      const errorMessage = getErrorMessage(error);
+      if (errorMessage.includes('Rate limit')) {
         errorContent = 'Te veel berichten. Wacht even voordat u een nieuw bericht stuurt.';
-      } else if (error.message.includes('Daily usage limit')) {
+      } else if (errorMessage.includes('Daily usage limit')) {
         errorContent = 'Dagelijkse gebruikslimiet bereikt. Probeer het morgen opnieuw.';
-      } else if (error.message.includes('Access denied')) {
+      } else if (errorMessage.includes('Access denied')) {
         errorContent = 'Toegang geweigerd. Start een nieuwe conversatie.';
       }
       
@@ -303,9 +313,10 @@ const WBSOChatInterface: React.FC = () => {
       console.error('Failed to generate application:', error);
       let errorContent = 'Sorry, er is een fout opgetreden bij het genereren van de aanvraag.';
       
-      if (error.message.includes('Generation limit')) {
+      const errorMessage = getErrorMessage(error);
+      if (errorMessage.includes('Generation limit')) {
         errorContent = 'Dagelijkse generatielimiet bereikt. U kunt morgen weer nieuwe aanvragen genereren.';
-      } else if (error.message.includes('Service temporarily unavailable')) {
+      } else if (errorMessage.includes('Service temporarily unavailable')) {
         errorContent = 'Service tijdelijk niet beschikbaar vanwege hoog gebruik. Probeer het later opnieuw.';
       }
       
