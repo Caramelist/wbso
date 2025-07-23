@@ -1,4 +1,4 @@
-# Exclude backend and development files from Netlify deployment
+# Exclude ALL files that might contain project IDs
 functions/
 node_modules/
 .env*
@@ -8,6 +8,8 @@ firebase.json
 .firebaserc
 firestore.rules
 storage.rules
+*.md
+!README.md
 
 # Development files
 *.log
@@ -17,10 +19,6 @@ storage.rules
 *.swp
 *.swo
 
-# Documentation
-*.md
-!README.md
-
 # Chrome extension
 chrome-extension/
 
@@ -28,4 +26,8 @@ chrome-extension/
 coverage/
 .nyc_output/
 dist/
-build/ 
+build/
+
+# Root package files (keep frontend/package.json)
+/package.json
+/package-lock.json 

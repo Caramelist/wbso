@@ -1,6 +1,6 @@
 {
   "projects": {
-    "default": "wbso-application"
+    "default": "YOUR_PROJECT_ID"
   },
   "targets": {},
   "etags": {}
