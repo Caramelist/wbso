@@ -20,6 +20,7 @@
     "node": "20"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.24.3",
     "@types/jsonwebtoken": "^9.0.10",
     "axios": "^1.6.0",
     "cors": "^2.8.5",

@@ -147,4 +147,12 @@ export {
 } from './leadManagement';
 
 // Export unsubscribe handler
-export { handleUnsubscribe } from './unsubscribe'; 
+export { handleUnsubscribe } from './unsubscribe';
+
+// Export AI chat endpoints
+export {
+  startWBSOChat,
+  processWBSOChatMessage,
+  generateWBSOApplication,
+  wbsoChatHealth
+} from './ai/chatEndpoints'; 
