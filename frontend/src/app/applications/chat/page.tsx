@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import WBSOChatInterface from '@/components/wbso/WBSOChatInterface';
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
+import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 export const metadata = {
   title: 'WBSO AI Assistent | WBSO Simpel',
