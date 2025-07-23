@@ -45,8 +45,8 @@ interface GeneratedWBSODocument {
 }
 
 const WBSOChatInterface: React.FC = () => {
-  const { t } = useLanguage();
-  const { user } = useAuth();
+  const { t, locale } = useLanguage();
+  const { user, firebaseUser } = useAuth();
   const searchParams = useSearchParams();
   const { mapLeadToInputs, decryptToken } = useLeadConversion();
   
@@ -113,18 +113,19 @@ const WBSOChatInterface: React.FC = () => {
       setLoading(true);
       
       // Get authentication token
-      if (!user) {
+      if (!user || !firebaseUser) {
         throw new Error('User must be authenticated');
       }
       
-      const token = await user.getIdToken();
+      const token = await firebaseUser.getIdToken();
       
       // Prepare user context for the AI agent
       const userContext = {
         isPreFilled,
         leadData: isPreFilled ? leadData : null,
         userId: user.uid,
-        userEmail: user.email
+        userEmail: user.email,
+        language: locale // Pass user's language preference (nl or en)
       };
 
       const response = await fetch('/api/wbso-chat-start', {
@@ -186,7 +187,7 @@ const WBSOChatInterface: React.FC = () => {
   };
 
   const sendMessage = async () => {
-    if (!input.trim() || loading || !user) return;
+    if (!input.trim() || loading || !user || !firebaseUser) return;
 
     const userMessage: ChatMessage = {
       id: uuidv4(),
@@ -200,7 +201,7 @@ const WBSOChatInterface: React.FC = () => {
     setLoading(true);
 
     try {
-      const token = await user.getIdToken();
+      const token = await firebaseUser.getIdToken();
       
       const response = await fetch('/api/wbso-chat-message', {
         method: 'POST',
@@ -261,12 +262,12 @@ const WBSOChatInterface: React.FC = () => {
   };
 
   const generateApplication = async () => {
-    if (!canGenerate || isGenerating || !user) return;
+    if (!canGenerate || isGenerating || !user || !firebaseUser) return;
 
-    try {
-      setIsGenerating(true);
-      
-      const token = await user.getIdToken();
+          try {
+        setIsGenerating(true);
+        
+        const token = await firebaseUser.getIdToken();
       
       const response = await fetch('/api/wbso-chat-generate', {
         method: 'POST',

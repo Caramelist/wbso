@@ -82,7 +82,8 @@ export class WBSOAgent {
       });
 
       // Generate opening message based on user context
-      const systemPrompt = this.knowledgeBase.getSystemPrompt();
+      const userLanguage = userContext?.language || 'nl';
+      const systemPrompt = this.knowledgeBase.getSystemPrompt(userLanguage);
       const contextualGreeting = this.generateContextualGreeting(userContext);
       
       const response = await this.claude.messages.create({
@@ -180,16 +181,26 @@ export class WBSOAgent {
   }
 
   private generateContextualGreeting(userContext: any): string {
+    const language = userContext?.language || 'nl';
+    
     // Check if user came from lead magnet
     if (userContext.isPreFilled && userContext.leadData) {
       const companyName = userContext.leadData.company_name;
       const sector = userContext.leadData.sbi_description;
       
-      return `I want to create a WBSO application for ${companyName}, a ${sector} company. I've already provided some information through the WBSO Check, so let's continue from there to complete my application.`;
+      if (language === 'en') {
+        return `I want to create a WBSO application for ${companyName}, a ${sector} company. I've already provided some information through the WBSO Check, so let's continue from there to complete my application.`;
+      } else {
+        return `Ik wil een WBSO-aanvraag maken voor ${companyName}, een ${sector} bedrijf. Ik heb al wat informatie verstrekt via de WBSO Check, dus laten we daar vandaan verder gaan om mijn aanvraag te voltooien.`;
+      }
     }
     
     // Direct user
-    return "I want to start a WBSO application for my company's R&D project.";
+    if (language === 'en') {
+      return "I want to start a WBSO application for my company's R&D project.";
+    } else {
+      return "Ik wil een WBSO-aanvraag starten voor het R&D-project van mijn bedrijf.";
+    }
   }
 
   private validateLimits(session: any): void {

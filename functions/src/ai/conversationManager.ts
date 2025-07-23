@@ -106,7 +106,13 @@ export class ConversationManager {
         model: process.env.CLAUDE_MODEL || "claude-3-5-sonnet-20241022",
         max_tokens: 4000,
         temperature: 0.2, // Lower temperature for more consistent output
-        system: `You are a WBSO application writer. Generate a complete, professional WBSO application in Dutch based on the conversation context. Return the response as a JSON object with the exact structure expected by the system.`,
+        system: `You are a WBSO application writer. Generate a complete, professional WBSO application ALWAYS IN DUTCH based on the conversation context. 
+
+CRITICAL: Regardless of the conversation language, the final WBSO application document must be written in Dutch (Nederlandse) as required by the RVO (Rijksdienst voor Ondernemend Nederland).
+
+The conversation may have been in English or Dutch, but transform all content into professional Dutch for the official application document.
+
+Return the response as a JSON object with the exact structure expected by the system.`,
         messages: [{
           role: 'user',
           content: generationPrompt
@@ -156,7 +162,10 @@ export class ConversationManager {
   }
 
   private buildContextualSystemPrompt(session: ConversationSession): string {
-    const basePrompt = this.knowledgeBase.getSystemPrompt();
+    // Get user's language preference, default to Dutch
+    const userLanguage = session.userContext?.language || 'nl';
+    
+    const basePrompt = this.knowledgeBase.getSystemPrompt(userLanguage);
     const phasePrompt = this.knowledgeBase.getPhasePrompt(session.phase);
     
     let contextPrompt = basePrompt + '\n\n' + phasePrompt;
@@ -264,7 +273,14 @@ Return only new or updated information as JSON. If nothing specific was mentione
   }
 
   private buildApplicationGenerationPrompt(session: ConversationSession): string {
+    const userLanguage = session.userContext?.language || 'nl';
+    const languageNote = userLanguage === 'en' 
+      ? 'IMPORTANT: The conversation was in English, but translate all content to professional Dutch for the official WBSO application as required by RVO.'
+      : 'BELANGRIJK: Zorg ervoor dat alle content in professioneel Nederlands wordt geschreven voor de officiële WBSO-aanvraag zoals vereist door RVO.';
+
     return `Generate a complete WBSO application based on this conversation:
+
+${languageNote}
 
 EXTRACTED INFORMATION:
 ${JSON.stringify(session.extractedInfo, null, 2)}
@@ -275,14 +291,14 @@ ${session.messages.map(msg => `${msg.role}: ${msg.content}`).join('\n\n')}
 Generate a complete WBSO application with the following structure as JSON:
 {
   "projectDescription": "Professional project description in Dutch",
-  "technicalChallenge": "Detailed technical challenge explanation",
-  "innovativeAspects": "Innovation and novelty description",
-  "expectedResults": "Expected outcomes and results",
+  "technicalChallenge": "Detailed technical challenge explanation in Dutch",
+  "innovativeAspects": "Innovation and novelty description in Dutch",
+  "expectedResults": "Expected outcomes and results in Dutch",
   "activities": [
     {
-      "name": "Activity name",
-      "description": "Detailed description",
-      "duration": "Duration",
+      "name": "Activity name in Dutch",
+      "description": "Detailed description in Dutch", 
+      "duration": "Duration description in Dutch",
       "hours": number
     }
   ],
@@ -294,7 +310,7 @@ Generate a complete WBSO application with the following structure as JSON:
   }
 }
 
-Ensure the application is professional, WBSO-compliant, and ready for RVO submission.`;
+Ensure the application is in professional Dutch, WBSO-compliant, and ready for RVO submission.`;
   }
 
   private parseGeneratedApplication(content: string, session: ConversationSession): any {
