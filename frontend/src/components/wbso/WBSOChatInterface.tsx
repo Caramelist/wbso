@@ -120,12 +120,11 @@ const WBSOChatInterface: React.FC = () => {
     try {
       setLoading(true);
       
-      // Debug: Log current state
+      // Debug: Log current state - NO SENSITIVE DATA
       console.log('🔍 Initializing chat with state:', {
         hasUser: !!user,
         hasFirebaseUser: !!firebaseUser,
-        userId: user?.uid,
-        userEmail: user?.email,
+        userId: user?.uid ? 'present' : 'missing',
         locale: locale,
         isPreFilled: isPreFilled,
         hasLeadData: !!leadData
@@ -533,7 +532,7 @@ const WBSOChatInterface: React.FC = () => {
               🔧 Debug Info (Development Only)
             </summary>
             <div className="text-xs text-yellow-700 space-y-1">
-              <div><strong>User:</strong> {user ? `${user.displayName || user.email} (${user.uid})` : 'Not authenticated'}</div>
+              <div><strong>User:</strong> {user ? 'Authenticated' : 'Not authenticated'}</div>
               <div><strong>Firebase User:</strong> {firebaseUser ? 'Authenticated' : 'Not authenticated'}</div>
               <div><strong>Language:</strong> {locale}</div>
               <div><strong>Session ID:</strong> {sessionId}</div>

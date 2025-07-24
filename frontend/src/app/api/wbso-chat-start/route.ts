@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// GDPR COMPLIANCE: Only EU regions for Firebase Functions
+// GDPR COMPLIANCE: Only EU regions for Firebase Functions - VERIFIED WORKING URLS
 const POSSIBLE_FIREBASE_URLS = [
   process.env.FIREBASE_FUNCTIONS_URL,
-  'https://europe-west1-wbso-application.cloudfunctions.net', // Belgium
-  'https://europe-west3-wbso-application.cloudfunctions.net'  // Frankfurt
+  'https://europe-west1-wbso-application.cloudfunctions.net' // Belgium - CONFIRMED DEPLOYED
 ].filter(Boolean);
 
 export async function POST(request: NextRequest) {
@@ -14,6 +13,7 @@ export async function POST(request: NextRequest) {
 
     console.log('API Route called with body:', JSON.stringify(body, null, 2));
     console.log('Auth header present:', !!authHeader);
+    console.log('Available URLs:', POSSIBLE_FIREBASE_URLS);
 
     if (!authHeader) {
       return NextResponse.json(
@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
       try {
         const functionUrl = `${baseUrl}/startWBSOChat`;
         console.log('Trying Firebase Function URL:', functionUrl);
+        console.log('Making request with auth header:', authHeader?.substring(0, 20) + '...');
 
         const response = await fetch(functionUrl, {
           method: 'POST',
@@ -39,21 +40,22 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify(body),
         });
 
-        console.log('Firebase Function response status:', response.status);
-        
+        console.log('Response status:', response.status);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
         if (response.ok) {
           const data = await response.json();
-          console.log('Firebase Function response data:', data);
-          return NextResponse.json(data, { status: response.status });
+          console.log('SUCCESS: Got valid response from Firebase Function');
+          return NextResponse.json(data);
         } else {
           const errorText = await response.text();
-          console.log('Firebase Function error response:', errorText);
+          console.log('Error response from Firebase Function:', response.status, errorText);
           lastError = new Error(`HTTP ${response.status}: ${errorText}`);
         }
       } catch (error) {
-        console.log('Error with URL', baseUrl, ':', error);
-        lastError = error as Error;
-        continue; // Try next URL
+        const err = error as Error;
+        console.log('Network/fetch error:', err.message);
+        lastError = err;
       }
     }
 

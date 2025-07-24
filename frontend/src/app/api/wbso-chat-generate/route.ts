@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// GDPR COMPLIANCE: Only EU regions for Firebase Functions
+// GDPR COMPLIANCE: Only EU regions for Firebase Functions - VERIFIED WORKING URLS
 const POSSIBLE_FIREBASE_URLS = [
   process.env.FIREBASE_FUNCTIONS_URL,
-  'https://europe-west1-wbso-application.cloudfunctions.net', // Belgium
-  'https://europe-west3-wbso-application.cloudfunctions.net'  // Frankfurt
+  'https://europe-west1-wbso-application.cloudfunctions.net' // Belgium - CONFIRMED DEPLOYED
 ].filter(Boolean);
 
 export async function POST(request: NextRequest) {
