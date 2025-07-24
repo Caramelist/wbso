@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { ClientProviders } from '@/components/providers/ClientProviders';
+import ClientProviders from '@/components/providers/ClientProviders';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import ErrorBoundary from '@/components/ui/ErrorBoundary';
 import '@/styles/globals.css';
