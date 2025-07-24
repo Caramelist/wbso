@@ -79,6 +79,16 @@ const emergencyLimiter = new RateLimiterMemory({
   duration: 60, // 1 minute
 });
 
+// MAINTENANCE MODE - Safe development mode
+const MAINTENANCE_MODE = true; // Set to false when ready for production
+
+const getMaintenanceResponse = () => ({
+  success: false,
+  error: 'AI systeem tijdelijk uitgeschakeld voor onderhoud. Probeer morgen opnieuw.',
+  maintenance: true,
+  expectedReturn: 'Tomorrow'
+});
+
 /**
  * Enhanced authentication middleware
  */
@@ -306,6 +316,12 @@ export const startWBSOChat = onRequest({ secrets: [anthropicApiKey] }, async (re
   return new Promise((resolve) => {
     corsHandler(req, res, async () => {
       try {
+        // MAINTENANCE MODE CHECK
+        if (MAINTENANCE_MODE) {
+          res.status(503).json(getMaintenanceResponse());
+          return resolve(undefined);
+        }
+
         if (req.method !== 'POST') {
           res.status(405).json({ success: false, error: 'Method not allowed' });
           return resolve(undefined);
@@ -399,6 +415,12 @@ export const processWBSOChatMessage = onRequest({ secrets: [anthropicApiKey] }, 
   return new Promise((resolve) => {
     corsHandler(req, res, async () => {
       try {
+        // MAINTENANCE MODE CHECK
+        if (MAINTENANCE_MODE) {
+          res.status(503).json(getMaintenanceResponse());
+          return resolve(undefined);
+        }
+
         if (req.method !== 'POST') {
           res.status(405).json({ success: false, error: 'Method not allowed' });
           return resolve(undefined);
@@ -487,6 +509,12 @@ export const generateWBSOApplication = onRequest({ secrets: [anthropicApiKey] },
   return new Promise((resolve) => {
     corsHandler(req, res, async () => {
       try {
+        // MAINTENANCE MODE CHECK
+        if (MAINTENANCE_MODE) {
+          res.status(503).json(getMaintenanceResponse());
+          return resolve(undefined);
+        }
+
         if (req.method !== 'POST') {
           res.status(405).json({ success: false, error: 'Method not allowed' });
           return resolve(undefined);

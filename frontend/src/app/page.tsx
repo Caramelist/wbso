@@ -6,177 +6,50 @@ import LanguageSwitcher from '@/components/ui/LanguageSwitcher';
 import AuthForm from '@/components/auth/AuthForm';
 import { useAuth } from '@/hooks/useAuth';
 
-export default function HomePage() {
-  const { t, locale } = useLanguage();
-  const { user, loading } = useAuth();
-  const [showAuthForm, setShowAuthForm] = useState(false);
-
-  // Debug: Check Firebase config availability
-  const hasFirebaseConfig = !!(
-    process.env.NEXT_PUBLIC_FIREBASE_API_KEY && 
-    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
-  );
-
-  const features = [
-    {
-      icon: '🤖',
-      titleKey: 'features.aiGeneration.title',
-      descKey: 'features.aiGeneration.description'
-    },
-    {
-      icon: '⚡',
-      titleKey: 'features.fastProcess.title', 
-      descKey: 'features.fastProcess.description'
-    },
-    {
-      icon: '👥',
-      titleKey: 'features.teamManagement.title',
-      descKey: 'features.teamManagement.description'
-    },
-    {
-      icon: '📊',
-      titleKey: 'features.tracking.title',
-      descKey: 'features.tracking.description'
-    }
-  ];
-
-  const handleAuthSuccess = () => {
-    setShowAuthForm(false);
-    window.location.href = '/dashboard';
-  };
-
-  const handleGoDashboard = () => {
-    window.location.href = '/dashboard';
-  };
-
+export default function MaintenancePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header */}
-      <header className="container mx-auto px-6 py-8">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center space-x-3">
-            <div className="text-3xl font-bold text-blue-600">🚀</div>
-            <h1 className="text-2xl font-bold text-gray-800">{t('app.name')}</h1>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-xl p-8 text-center">
+        <div className="mb-6">
+          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 9.586V5L8 4z" />
+            </svg>
           </div>
-          <LanguageSwitcher />
-        </div>
-      </header>
-
-      {/* Auth Modal */}
-      {showAuthForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="relative max-w-md w-full">
-            <button
-              onClick={() => setShowAuthForm(false)}
-              className="absolute -top-4 -right-4 bg-white rounded-full p-2 text-gray-500 hover:text-gray-700 z-10"
-            >
-              ✕
-            </button>
-            <AuthForm onSuccess={handleAuthSuccess} />
-          </div>
-        </div>
-      )}
-
-      {/* Hero Section */}
-      <main className="container mx-auto px-6 py-12">
-        <div className="text-center mb-16">
-          <h1 className="text-5xl font-bold text-gray-800 mb-6 leading-tight">
-            {t('app.tagline')}
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            WBSO Simpel
           </h1>
-          <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
-            {t('app.description')}
+          <p className="text-gray-600 mb-4">
+            System in onderhoud
           </p>
-
-          {/* Success badge - Firebase is working! */}
-          {hasFirebaseConfig && (
-            <div className="mb-6 inline-block px-4 py-2 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-              🔥 Authentication Ready
-            </div>
-          )}
-
-          <div className="space-y-4">
-            {user ? (
-              <button
-                onClick={handleGoDashboard}
-                className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors"
-              >
-                🎯 {t('dashboard.title')}
-              </button>
-            ) : (
-              <button
-                onClick={() => setShowAuthForm(true)}
-                disabled={loading}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition-colors disabled:opacity-50"
-              >
-                {loading ? t('auth.loading') : '🚀 Get Started'}
-              </button>
-            )}
-            <p className="text-sm text-gray-500">
-              {user ? 
-                `Welkom terug, ${user.displayName || user.email}!` : 
-                (hasFirebaseConfig ? 'Choose Google or email authentication' : t('demo.authRequired'))
-              }
+        </div>
+        
+        <div className="space-y-4">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <p className="text-sm text-yellow-800">
+              🔧 De applicatie wordt momenteel doorontwikkeld voor een betere ervaring.
             </p>
           </div>
-        </div>
-
-        {/* Features Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16">
-          {features.map((feature, index) => (
-            <div key={index} className="bg-white rounded-xl shadow-lg p-6 text-center hover:shadow-xl transition-shadow">
-              <div className="text-4xl mb-4">{feature.icon}</div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-3">
-                {t(feature.titleKey)}
-              </h3>
-              <p className="text-gray-600 leading-relaxed">
-                {t(feature.descKey)}
-              </p>
-            </div>
-          ))}
-        </div>
-
-        {/* Demo Dashboard Preview */}
-        <div className="bg-white rounded-xl shadow-lg p-8 mb-16">
-          <h2 className="text-3xl font-bold text-gray-800 mb-6 text-center">
-            {t('demo.dashboardPreview')}
-          </h2>
           
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-lg p-6 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-green-100 text-sm">{t('demo.approved')}</p>
-                  <p className="text-3xl font-bold">€127K</p>
-                  <p className="text-green-100 text-sm">{t('demo.thisYear')}</p>
-                </div>
-                <div className="text-4xl opacity-80">✅</div>
-              </div>
-            </div>
-            
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg p-6 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-blue-100 text-sm">{t('demo.inProgress')}</p>
-                  <p className="text-3xl font-bold">3</p>
-                  <p className="text-blue-100 text-sm">{t('demo.thisMonth')}</p>
-                </div>
-                <div className="text-4xl opacity-80">⏳</div>
-              </div>
-            </div>
-            
-            <div className="bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg p-6 text-white">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-purple-100 text-sm">Team Members</p>
-                  <p className="text-3xl font-bold">12</p>
-                  <p className="text-purple-100 text-sm">Active</p>
-                </div>
-                <div className="text-4xl opacity-80">👥</div>
-              </div>
-            </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p className="text-sm text-blue-800 mb-2">
+              📧 Voor vragen over WBSO:
+            </p>
+            <a 
+              href="mailto:info@wbsosimpel.nl" 
+              className="text-blue-600 hover:text-blue-700 font-medium"
+            >
+              info@wbsosimpel.nl
+            </a>
           </div>
         </div>
-      </main>
+        
+        <div className="mt-6 pt-4 border-t border-gray-200">
+          <p className="text-xs text-gray-500">
+            Verwachte terugkeer: Morgen
+          </p>
+        </div>
+      </div>
     </div>
   );
 } 
