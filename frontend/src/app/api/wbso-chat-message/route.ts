@@ -5,7 +5,7 @@ const POSSIBLE_FIREBASE_URLS = [
   process.env.FIREBASE_FUNCTIONS_URL,
   'https://europe-west1-wbso-application.cloudfunctions.net', // Legacy format
   'https://processwbsochatmessage-z44g5hzbna-ew.a.run.app' // New Cloud Run format - CONFIRMED DEPLOYED
-].filter(Boolean);
+].filter((url): url is string => Boolean(url));
 
 export async function POST(request: NextRequest) {
   try {
