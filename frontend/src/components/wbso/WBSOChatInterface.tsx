@@ -120,12 +120,24 @@ const WBSOChatInterface: React.FC = () => {
     try {
       setLoading(true);
       
+      // Debug: Log current state
+      console.log('🔍 Initializing chat with state:', {
+        hasUser: !!user,
+        hasFirebaseUser: !!firebaseUser,
+        userId: user?.uid,
+        userEmail: user?.email,
+        locale: locale,
+        isPreFilled: isPreFilled,
+        hasLeadData: !!leadData
+      });
+      
       // Get authentication token
       if (!user || !firebaseUser) {
         throw new Error('User must be authenticated');
       }
       
       const token = await firebaseUser.getIdToken();
+      console.log('🔑 Got auth token:', token ? 'SUCCESS' : 'FAILED');
       
       // Prepare user context for the AI agent
       const userContext = {
@@ -135,6 +147,8 @@ const WBSOChatInterface: React.FC = () => {
         userEmail: user.email,
         language: locale // Pass user's language preference (nl or en)
       };
+
+      console.log('📤 Sending request to /api/wbso-chat-start with context:', userContext);
 
       const response = await fetch('/api/wbso-chat-start', {
         method: 'POST',
@@ -148,11 +162,16 @@ const WBSOChatInterface: React.FC = () => {
         })
       });
       
+      console.log('📥 API Response status:', response.status);
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorText = await response.text();
+        console.error('❌ API Error response:', errorText);
+        throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
       }
       
       const data = await response.json();
+      console.log('📊 API Response data:', data);
       
       if (data.success) {
         const initialMessage: ChatMessage = {
@@ -167,20 +186,29 @@ const WBSOChatInterface: React.FC = () => {
         setPhase(data.data.phase);
         setCanGenerate(data.data.readyForGeneration);
         setTotalCost(data.data.cost);
+        
+        console.log('✅ Chat initialized successfully');
       } else {
+        console.error('❌ API returned error:', data.error);
         throw new Error(data.error || 'Failed to initialize chat');
       }
     } catch (error) {
-      console.error('Failed to initialize chat:', error);
+      console.error('❌ Failed to initialize chat:', error);
       let errorContent = 'Sorry, er is een fout opgetreden bij het opstarten van de chat.';
       
       const errorText = getErrorMessage(error);
+      console.log('🔍 Processing error:', errorText);
+      
       if (errorText.includes('Rate limit')) {
         errorContent = 'Te veel verzoeken. Probeer het over een paar minuten opnieuw.';
       } else if (errorText.includes('authentication')) {
         errorContent = 'Authenticatie vereist. Log opnieuw in.';
       } else if (errorText.includes('Daily usage limit')) {
         errorContent = 'Dagelijkse gebruikslimiet bereikt. Probeer het morgen opnieuw.';
+      } else if (errorText.includes('Firebase Functions not accessible')) {
+        errorContent = 'De WBSO AI service is momenteel niet beschikbaar. Probeer het later opnieuw of neem contact op met support.';
+      } else if (errorText.includes('500')) {
+        errorContent = `Server fout: ${errorText}. Probeer het opnieuw of neem contact op met support als het probleem aanhoudt.`;
       }
       
       const errorMessage: ChatMessage = {
@@ -498,6 +526,29 @@ const WBSOChatInterface: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Development Debug Panel */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <details className="cursor-pointer">
+            <summary className="font-medium text-yellow-800 mb-2">
+              🔧 Debug Info (Development Only)
+            </summary>
+            <div className="text-xs text-yellow-700 space-y-1">
+              <div><strong>User:</strong> {user ? `${user.displayName || user.email} (${user.uid})` : 'Not authenticated'}</div>
+              <div><strong>Firebase User:</strong> {firebaseUser ? 'Authenticated' : 'Not authenticated'}</div>
+              <div><strong>Language:</strong> {locale}</div>
+              <div><strong>Session ID:</strong> {sessionId}</div>
+              <div><strong>Messages:</strong> {messages.length}</div>
+              <div><strong>Phase:</strong> {phase}</div>
+              <div><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</div>
+              <div><strong>Can Generate:</strong> {canGenerate ? 'Yes' : 'No'}</div>
+              <div><strong>Pre-filled:</strong> {isPreFilled ? 'Yes' : 'No'}</div>
+              {isPreFilled && <div><strong>Lead Data:</strong> {leadData ? 'Available' : 'Missing'}</div>}
+            </div>
+          </details>
+        </div>
+      )}
 
       {/* Chat interface */}
       <div className="bg-white border border-gray-200 rounded-lg shadow-lg">
