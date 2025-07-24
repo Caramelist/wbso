@@ -139,16 +139,17 @@ const WBSOChatInterface: React.FC = () => {
       const token = await firebaseUser.getIdToken();
       console.log('🔑 Got auth token:', token ? 'SUCCESS' : 'FAILED');
       
-      // Prepare user context for the AI agent
-      const userContext = {
-        isPreFilled,
-        leadData: isPreFilled ? leadData : null,
-        userId: user.uid,
-        userEmail: user.email,
-        language: locale // Pass user's language preference (nl or en)
+      // Prepare request body - SECURITY: Don't send user email, let server extract from auth token
+      const requestBody = {
+        sessionId,
+        userContext: {
+          language: locale,
+          isPreFilled,
+          ...(isPreFilled && leadData ? { leadData } : {})
+        }
       };
 
-      console.log('📤 Sending request to /api/wbso-chat-start with context:', userContext);
+      console.log('📤 Sending request to /api/wbso-chat-start with context:', requestBody);
 
       const response = await fetch('/api/wbso-chat-start', {
         method: 'POST',
@@ -156,10 +157,7 @@ const WBSOChatInterface: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ 
-          sessionId,
-          userContext 
-        })
+        body: JSON.stringify(requestBody)
       });
       
       console.log('📥 API Response status:', response.status);
