@@ -4,7 +4,6 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { WBSOAgent } from './wbsoAgent';
 import { logger } from 'firebase-functions';
-import { config } from 'firebase-functions';
 import cors from 'cors';
 import { RateLimiterMemory, RateLimiterRes } from 'rate-limiter-flexible';
 
@@ -488,24 +487,17 @@ export const wbsoChatHealth = onRequest(async (req, res) => {
         // Basic rate limiting for health checks
         await emergencyLimiter.consume(req.ip || 'unknown');
         
-        // Check required environment variables
-        const functionsConfig = config();
-        const requiredEnvVars = ['anthropic.api_key'];
-        const missingVars = requiredEnvVars.filter(varName => {
-          const keys = varName.split('.');
-          let obj = functionsConfig;
-          for (const key of keys) {
-            obj = obj[key];
-            if (!obj) return true;
+        // Check required parameters - try to access them to validate they're set
+        try {
+          const apiKey = process.env.ANTHROPIC_API_KEY;
+          if (!apiKey) {
+            throw new Error('ANTHROPIC_API_KEY not configured');
           }
-          return false;
-        });
-        
-        if (missingVars.length > 0) {
+        } catch (error) {
           res.status(500).json({
             success: false,
-            error: 'Missing required environment variables',
-            missing: missingVars
+            error: 'Missing required parameters',
+            details: 'ANTHROPIC_API_KEY not configured'
           });
           return resolve(undefined);
         }

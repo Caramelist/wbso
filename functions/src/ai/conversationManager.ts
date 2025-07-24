@@ -3,7 +3,6 @@ import { WBSOKnowledgeBase } from './knowledgeBase';
 import { SessionManager, ConversationSession } from './sessionManager';
 import { TokenCounter } from './tokenCounter';
 import { logger } from 'firebase-functions';
-import { config } from 'firebase-functions';
 
 // Define ChatResponse interface here to avoid circular dependency
 export interface ChatResponse {
@@ -21,14 +20,12 @@ export class ConversationManager {
   private knowledgeBase: WBSOKnowledgeBase;
   private sessionManager: SessionManager;
   private tokenCounter: TokenCounter;
-  private functionsConfig: any;
 
   constructor(claude: Anthropic) {
     this.claude = claude;
     this.knowledgeBase = new WBSOKnowledgeBase();
     this.sessionManager = new SessionManager();
     this.tokenCounter = new TokenCounter();
-    this.functionsConfig = config();
   }
 
   async processMessage(
@@ -46,7 +43,7 @@ export class ConversationManager {
 
       // Get response from Claude
       const response = await this.claude.messages.create({
-        model: this.functionsConfig.anthropic?.model || "claude-3-5-sonnet-20241022",
+        model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
         max_tokens: 4000,
         temperature: 0.3,
         system: systemPrompt,
@@ -60,7 +57,7 @@ export class ConversationManager {
       const inputTokens = this.tokenCounter.count(systemPrompt + userMessage);
       const outputTokens = this.tokenCounter.count(assistantResponse);
       const messageCost = this.tokenCounter.calculateCost(inputTokens, outputTokens, 
-        this.functionsConfig.anthropic?.model || "claude-3-5-sonnet-20241022");
+        process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022');
 
       // Add assistant response to session
       await this.sessionManager.addMessage(sessionId, 'assistant', assistantResponse);
@@ -81,25 +78,25 @@ export class ConversationManager {
       // Determine next phase and readiness
       const updatedSession = await this.sessionManager.getSession(sessionId);
       if (!updatedSession) {
-        throw new Error('Session not found after update');
+        throw new Error('Failed to retrieve updated session');
       }
-      
-      const nextPhase = this.determineNextPhase(updatedSession);
+
       const completeness = this.calculateCompleteness(updatedSession);
-      
-      // Update phase if changed
-      if (nextPhase !== session.phase) {
-        await this.sessionManager.updateSession(sessionId, { phase: nextPhase, completeness });
-      }
+      const nextPhase = this.determineNextPhase(completeness, updatedSession.phase);
+
+      await this.sessionManager.updateSession(sessionId, {
+        phase: nextPhase,
+        completeness: completeness
+      });
 
       return {
         message: assistantResponse,
         sessionId,
         phase: nextPhase,
         completeness,
-        cost: session.cost + messageCost,
-        readyForGeneration: completeness >= 80 && nextPhase === 'generation',
-        extractedInfo: updatedSession.extractedInfo
+        cost: messageCost,
+        readyForGeneration: completeness >= 80,
+        extractedInfo
       };
 
     } catch (error) {
@@ -116,7 +113,7 @@ export class ConversationManager {
       const generationPrompt = this.buildApplicationGenerationPrompt(session);
       
       const response = await this.claude.messages.create({
-        model: this.functionsConfig.anthropic?.model || "claude-3-5-sonnet-20241022",
+        model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
         max_tokens: 4000,
         temperature: 0.2, // Lower temperature for more consistent output
         system: `You are a WBSO application writer. Generate a complete, professional WBSO application ALWAYS IN DUTCH based on the conversation context. 
@@ -140,7 +137,7 @@ Return the response as a JSON object with the exact structure expected by the sy
       const inputTokens = this.tokenCounter.count(generationPrompt);
       const outputTokens = this.tokenCounter.count(generatedContent);
       const generationCost = this.tokenCounter.calculateCost(inputTokens, outputTokens, 
-        this.functionsConfig.anthropic?.model || "claude-3-5-sonnet-20241022");
+        process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022');
 
       // Update session
       await this.sessionManager.updateSession(session.id, {
@@ -152,14 +149,15 @@ Return the response as a JSON object with the exact structure expected by the sy
 
       logger.info('WBSO application generated successfully', { 
         sessionId: session.id,
-        cost: generationCost
+        generationCost,
+        outputLength: generatedContent.length
       });
 
       return application;
 
     } catch (error) {
       const err = error as Error;
-      logger.error('Failed to generate application', { sessionId: session.id, error: err.message });
+      logger.error('Failed to generate WBSO application', { sessionId: session.id, error: err.message });
       throw new Error(`Failed to generate application: ${err.message}`);
     }
   }
@@ -252,7 +250,7 @@ Extract fields like:
 Return only new or updated information as JSON. If nothing specific was mentioned, return {}.`;
 
       const extractionResponse = await this.claude.messages.create({
-        model: this.functionsConfig.anthropic?.model || "claude-3-5-sonnet-20241022",
+        model: process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022',
         max_tokens: 1000,
         temperature: 0.1,
         system: "You are an information extraction expert. Extract structured data from conversations and return valid JSON.",
@@ -292,10 +290,10 @@ Return only new or updated information as JSON. If nothing specific was mentione
     }
   }
 
-  private determineNextPhase(session: ConversationSession): ConversationSession['phase'] {
-    if ((session.completeness || 0) >= 80) {
+  private determineNextPhase(completeness: number, currentPhase: ConversationSession['phase']): ConversationSession['phase'] {
+    if (completeness >= 80) {
       return 'generation';
-    } else if ((session.completeness || 0) >= 50) {
+    } else if (completeness >= 50) {
       return 'clarification';
     } else {
       return 'discovery';
