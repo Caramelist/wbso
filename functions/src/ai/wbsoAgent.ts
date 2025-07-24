@@ -1,9 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { WBSOKnowledgeBase } from './knowledgeBase';
-import { ConversationManager } from './conversationManager';
+import { ConversationManager, ChatResponse } from './conversationManager';
 import { SessionManager } from './sessionManager';
 import { TokenCounter } from './tokenCounter';
 import { logger } from 'firebase-functions';
+import { config } from 'firebase-functions';
 
 export interface WBSOAgentConfig {
   model: string;
@@ -16,15 +17,7 @@ export interface WBSOAgentConfig {
   };
 }
 
-export interface ChatResponse {
-  message: string;
-  sessionId: string;
-  phase: 'discovery' | 'clarification' | 'generation' | 'complete';
-  completeness: number;
-  cost: number;
-  readyForGeneration: boolean;
-  extractedInfo?: any;
-}
+// ChatResponse interface is now imported from conversationManager to avoid circular dependency
 
 export class WBSOAgent {
   private claude: Anthropic;
@@ -35,9 +28,12 @@ export class WBSOAgent {
   private config: WBSOAgentConfig;
 
   constructor() {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
+    // Get API key from Firebase Functions config
+    const functionsConfig = config();
+    const apiKey = functionsConfig.anthropic?.api_key;
+    
     if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY not configured');
+      throw new Error('ANTHROPIC_API_KEY not configured in Firebase Functions config');
     }
 
     this.claude = new Anthropic({
@@ -50,13 +46,13 @@ export class WBSOAgent {
     this.tokenCounter = new TokenCounter();
     
     this.config = {
-      model: process.env.CLAUDE_MODEL || "claude-3-5-sonnet-20241022",
+      model: functionsConfig.anthropic?.model || "claude-3-5-sonnet-20241022",
       maxTokens: 4000,
       temperature: 0.3,
       maxExchanges: 15,
       costLimits: {
-        perSession: parseFloat(process.env.MAX_COST_PER_SESSION || '5.00'),
-        daily: parseFloat(process.env.DAILY_COST_LIMIT || '500.00')
+        perSession: parseFloat(functionsConfig.app?.max_cost_per_session || '5.00'),
+        daily: parseFloat(functionsConfig.app?.daily_cost_limit || '500.00')
       }
     };
 
@@ -71,7 +67,7 @@ export class WBSOAgent {
       logger.info('Starting WBSO conversation', { sessionId, userContext });
 
       // Initialize session
-      const session = await this.sessionManager.createSession(sessionId, {
+      await this.sessionManager.createSession(sessionId, {
         phase: 'discovery',
         extractedInfo: {},
         messages: [],
@@ -97,13 +93,16 @@ export class WBSOAgent {
         }]
       });
 
+      // Extract text from response (handle different content types)
+      const responseText = this.extractTextFromResponse(response);
+
       // Track costs and tokens
       const inputTokens = this.tokenCounter.count(systemPrompt + contextualGreeting);
-      const outputTokens = this.tokenCounter.count(response.content[0].text);
+      const outputTokens = this.tokenCounter.count(responseText);
       const cost = this.tokenCounter.calculateCost(inputTokens, outputTokens, this.config.model);
       
       await this.sessionManager.updateSession(sessionId, {
-        messages: [{ role: "assistant", content: response.content[0].text }],
+        messages: [{ role: "assistant", content: responseText }],
         tokenCount: inputTokens + outputTokens,
         cost: cost
       });
@@ -111,7 +110,7 @@ export class WBSOAgent {
       logger.info('Conversation started successfully', { sessionId, cost, tokens: inputTokens + outputTokens });
 
       return {
-        message: response.content[0].text,
+        message: responseText,
         sessionId,
         phase: 'discovery',
         completeness: 0,
@@ -120,8 +119,9 @@ export class WBSOAgent {
       };
       
     } catch (error) {
-      logger.error('Failed to start conversation', { sessionId, error: error.message });
-      throw new Error(`Failed to start conversation: ${error.message}`);
+      const err = error as Error;
+      logger.error('Failed to start conversation', { sessionId, error: err.message });
+      throw new Error(`Failed to start conversation: ${err.message}`);
     }
   }
 
@@ -153,8 +153,9 @@ export class WBSOAgent {
       return result;
       
     } catch (error) {
-      logger.error('Failed to process message', { sessionId, error: error.message });
-      throw new Error(`Failed to process message: ${error.message}`);
+      const err = error as Error;
+      logger.error('Failed to process message', { sessionId, error: err.message });
+      throw new Error(`Failed to process message: ${err.message}`);
     }
   }
 
@@ -167,7 +168,7 @@ export class WBSOAgent {
         throw new Error('Session not found');
       }
       
-      if (session.completeness < 80) {
+      if ((session.completeness || 0) < 80) {
         throw new Error('Insufficient information for application generation');
       }
 
@@ -175,8 +176,9 @@ export class WBSOAgent {
       return await this.conversationManager.generateApplication(session);
       
     } catch (error) {
-      logger.error('Failed to generate application', { sessionId, error: error.message });
-      throw new Error(`Failed to generate application: ${error.message}`);
+      const err = error as Error;
+      logger.error('Failed to generate application', { sessionId, error: err.message });
+      throw new Error(`Failed to generate application: ${err.message}`);
     }
   }
 
@@ -201,6 +203,20 @@ export class WBSOAgent {
     } else {
       return "Ik wil een WBSO-aanvraag starten voor het R&D-project van mijn bedrijf.";
     }
+  }
+
+  /**
+   * Extract text content from Anthropic API response
+   */
+  private extractTextFromResponse(response: Anthropic.Messages.Message): string {
+    // Handle different content types from Anthropic API
+    if (response.content && response.content.length > 0) {
+      const firstContent = response.content[0];
+      if (firstContent.type === 'text') {
+        return firstContent.text;
+      }
+    }
+    throw new Error('No text content found in response');
   }
 
   private validateLimits(session: any): void {

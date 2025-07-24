@@ -1,9 +1,4 @@
 import { onRequest } from 'firebase-functions/v2/https';
-import { initializeApp } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-
-// Initialize Firebase Admin (if not already done)
-const db = getFirestore();
 
 // Placeholder functions for user management
 export const createUser = onRequest(async (req, res) => {

@@ -2,20 +2,33 @@ import Anthropic from '@anthropic-ai/sdk';
 import { WBSOKnowledgeBase } from './knowledgeBase';
 import { SessionManager, ConversationSession } from './sessionManager';
 import { TokenCounter } from './tokenCounter';
-import { ChatResponse } from './wbsoAgent';
 import { logger } from 'firebase-functions';
+import { config } from 'firebase-functions';
+
+// Define ChatResponse interface here to avoid circular dependency
+export interface ChatResponse {
+  message: string;
+  sessionId: string;
+  phase: 'discovery' | 'clarification' | 'generation' | 'complete';
+  completeness: number;
+  cost: number;
+  readyForGeneration: boolean;
+  extractedInfo?: any;
+}
 
 export class ConversationManager {
   private claude: Anthropic;
   private knowledgeBase: WBSOKnowledgeBase;
   private sessionManager: SessionManager;
   private tokenCounter: TokenCounter;
+  private functionsConfig: any;
 
   constructor(claude: Anthropic) {
     this.claude = claude;
     this.knowledgeBase = new WBSOKnowledgeBase();
     this.sessionManager = new SessionManager();
     this.tokenCounter = new TokenCounter();
+    this.functionsConfig = config();
   }
 
   async processMessage(
@@ -33,20 +46,21 @@ export class ConversationManager {
 
       // Get response from Claude
       const response = await this.claude.messages.create({
-        model: process.env.CLAUDE_MODEL || "claude-3-5-sonnet-20241022",
+        model: this.functionsConfig.anthropic?.model || "claude-3-5-sonnet-20241022",
         max_tokens: 4000,
         temperature: 0.3,
         system: systemPrompt,
         messages: conversationHistory
       });
 
-      const assistantResponse = response.content[0].text;
+      // Extract text from response (handle different content types)
+      const assistantResponse = this.extractTextFromResponse(response);
 
       // Calculate costs
       const inputTokens = this.tokenCounter.count(systemPrompt + userMessage);
       const outputTokens = this.tokenCounter.count(assistantResponse);
       const messageCost = this.tokenCounter.calculateCost(inputTokens, outputTokens, 
-        process.env.CLAUDE_MODEL || "claude-3-5-sonnet-20241022");
+        this.functionsConfig.anthropic?.model || "claude-3-5-sonnet-20241022");
 
       // Add assistant response to session
       await this.sessionManager.addMessage(sessionId, 'assistant', assistantResponse);
@@ -66,33 +80,32 @@ export class ConversationManager {
 
       // Determine next phase and readiness
       const updatedSession = await this.sessionManager.getSession(sessionId);
-      const nextPhase = this.determineNextPhase(updatedSession);
-      const readyForGeneration = updatedSession.completeness >= 80;
-
-      if (nextPhase !== session.phase) {
-        await this.sessionManager.updatePhase(sessionId, nextPhase);
+      if (!updatedSession) {
+        throw new Error('Session not found after update');
       }
-
-      logger.info('Message processed in conversation', {
-        sessionId,
-        phase: nextPhase,
-        completeness: updatedSession.completeness,
-        cost: messageCost
-      });
+      
+      const nextPhase = this.determineNextPhase(updatedSession);
+      const completeness = this.calculateCompleteness(updatedSession);
+      
+      // Update phase if changed
+      if (nextPhase !== session.phase) {
+        await this.sessionManager.updateSession(sessionId, { phase: nextPhase, completeness });
+      }
 
       return {
         message: assistantResponse,
         sessionId,
         phase: nextPhase,
-        completeness: updatedSession.completeness,
+        completeness,
         cost: session.cost + messageCost,
-        readyForGeneration,
+        readyForGeneration: completeness >= 80 && nextPhase === 'generation',
         extractedInfo: updatedSession.extractedInfo
       };
 
     } catch (error) {
-      logger.error('Failed to process conversation message', { sessionId, error: error.message });
-      throw new Error(`Conversation processing failed: ${error.message}`);
+      const err = error as Error;
+      logger.error('Failed to process message', { sessionId, error: err.message });
+      throw new Error(`Failed to process message: ${err.message}`);
     }
   }
 
@@ -103,7 +116,7 @@ export class ConversationManager {
       const generationPrompt = this.buildApplicationGenerationPrompt(session);
       
       const response = await this.claude.messages.create({
-        model: process.env.CLAUDE_MODEL || "claude-3-5-sonnet-20241022",
+        model: this.functionsConfig.anthropic?.model || "claude-3-5-sonnet-20241022",
         max_tokens: 4000,
         temperature: 0.2, // Lower temperature for more consistent output
         system: `You are a WBSO application writer. Generate a complete, professional WBSO application ALWAYS IN DUTCH based on the conversation context. 
@@ -120,14 +133,14 @@ Return the response as a JSON object with the exact structure expected by the sy
       });
 
       // Parse the generated application
-      const generatedContent = response.content[0].text;
+      const generatedContent = this.extractTextFromResponse(response);
       const application = this.parseGeneratedApplication(generatedContent, session);
 
       // Calculate costs
       const inputTokens = this.tokenCounter.count(generationPrompt);
       const outputTokens = this.tokenCounter.count(generatedContent);
       const generationCost = this.tokenCounter.calculateCost(inputTokens, outputTokens, 
-        process.env.CLAUDE_MODEL || "claude-3-5-sonnet-20241022");
+        this.functionsConfig.anthropic?.model || "claude-3-5-sonnet-20241022");
 
       // Update session
       await this.sessionManager.updateSession(session.id, {
@@ -137,28 +150,42 @@ Return the response as a JSON object with the exact structure expected by the sy
         completeness: 100
       });
 
-      logger.info('WBSO application generated successfully', {
+      logger.info('WBSO application generated successfully', { 
         sessionId: session.id,
-        generationCost,
-        totalCost: session.cost + generationCost
+        cost: generationCost
       });
 
       return application;
 
     } catch (error) {
-      logger.error('Failed to generate WBSO application', { sessionId: session.id, error: error.message });
-      throw new Error(`Application generation failed: ${error.message}`);
+      const err = error as Error;
+      logger.error('Failed to generate application', { sessionId: session.id, error: err.message });
+      throw new Error(`Failed to generate application: ${err.message}`);
     }
   }
 
-  private buildConversationHistory(session: ConversationSession): Array<{role: string; content: string}> {
-    // Only include user and assistant messages, exclude system messages
-    return session.messages
-      .filter(msg => msg.role !== 'system')
-      .map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }));
+  /**
+   * Extract text content from Anthropic API response
+   */
+  private extractTextFromResponse(response: Anthropic.Messages.Message): string {
+    // Handle different content types from Anthropic API
+    if (response.content && response.content.length > 0) {
+      const firstContent = response.content[0];
+      if (firstContent.type === 'text') {
+        return firstContent.text;
+      }
+    }
+    throw new Error('No text content found in response');
+  }
+
+  /**
+   * Build conversation history with proper typing
+   */
+  private buildConversationHistory(session: ConversationSession): Anthropic.Messages.MessageParam[] {
+    return session.messages.map(msg => ({
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content
+    }));
   }
 
   private buildContextualSystemPrompt(session: ConversationSession): string {
@@ -166,7 +193,9 @@ Return the response as a JSON object with the exact structure expected by the sy
     const userLanguage = session.userContext?.language || 'nl';
     
     const basePrompt = this.knowledgeBase.getSystemPrompt(userLanguage);
-    const phasePrompt = this.knowledgeBase.getPhasePrompt(session.phase);
+    // Handle phase prompt - only use valid phases, map 'complete' to 'generation'
+    const validPhase = session.phase === 'complete' ? 'generation' : session.phase;
+    const phasePrompt = this.knowledgeBase.getPhasePrompt(validPhase as 'discovery' | 'clarification' | 'generation');
     
     let contextPrompt = basePrompt + '\n\n' + phasePrompt;
 
@@ -223,7 +252,7 @@ Extract fields like:
 Return only new or updated information as JSON. If nothing specific was mentioned, return {}.`;
 
       const extractionResponse = await this.claude.messages.create({
-        model: process.env.CLAUDE_MODEL || "claude-3-5-sonnet-20241022",
+        model: this.functionsConfig.anthropic?.model || "claude-3-5-sonnet-20241022",
         max_tokens: 1000,
         temperature: 0.1,
         system: "You are an information extraction expert. Extract structured data from conversations and return valid JSON.",
@@ -233,7 +262,7 @@ Return only new or updated information as JSON. If nothing specific was mentione
         }]
       });
 
-      const extracted = this.parseExtractedInfo(extractionResponse.content[0].text);
+      const extracted = this.parseExtractedInfo(this.extractTextFromResponse(extractionResponse));
       
       logger.info('Information extracted from conversation', {
         sessionId,
@@ -243,7 +272,8 @@ Return only new or updated information as JSON. If nothing specific was mentione
       return extracted;
 
     } catch (error) {
-      logger.warn('Failed to extract information from conversation', { sessionId, error: error.message });
+      const err = error as Error;
+      logger.warn('Failed to extract information from conversation', { sessionId, error: err.message });
       return {};
     }
   }
@@ -263,13 +293,32 @@ Return only new or updated information as JSON. If nothing specific was mentione
   }
 
   private determineNextPhase(session: ConversationSession): ConversationSession['phase'] {
-    if (session.completeness >= 80) {
+    if ((session.completeness || 0) >= 80) {
       return 'generation';
-    } else if (session.completeness >= 50) {
+    } else if ((session.completeness || 0) >= 50) {
       return 'clarification';
     } else {
       return 'discovery';
     }
+  }
+
+  private calculateCompleteness(session: ConversationSession): number {
+    const extractedInfo = session.extractedInfo || {};
+    const totalFields = 10; // Example total fields, adjust as needed
+    let completeness = 0;
+
+    if (extractedInfo.projectTitle) completeness++;
+    if (extractedInfo.projectType) completeness++;
+    if (extractedInfo.problemDescription) completeness++;
+    if (extractedInfo.proposedSolution) completeness++;
+    if (extractedInfo.technicalChallenges && extractedInfo.technicalChallenges.length > 0) completeness++;
+    if (extractedInfo.innovationAspects) completeness++;
+    if (extractedInfo.timeline) completeness++;
+    if (extractedInfo.teamSize) completeness++;
+    if (extractedInfo.companyInfo) completeness++;
+    if (extractedInfo.budgetEstimate) completeness++;
+
+    return (completeness / totalFields) * 100;
   }
 
   private buildApplicationGenerationPrompt(session: ConversationSession): string {
@@ -326,9 +375,10 @@ Ensure the application is in professional Dutch, WBSO-compliant, and ready for R
       return this.createFallbackApplication(session);
 
     } catch (error) {
+      const err = error as Error;
       logger.warn('Failed to parse generated application, using fallback', { 
         sessionId: session.id, 
-        error: error.message 
+        error: err.message 
       });
       return this.createFallbackApplication(session);
     }

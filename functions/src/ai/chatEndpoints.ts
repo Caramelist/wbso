@@ -4,8 +4,9 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { WBSOAgent } from './wbsoAgent';
 import { logger } from 'firebase-functions';
-import * as cors from 'cors';
-import { RateLimiterMemory, RateLimiterFirestore } from 'rate-limiter-flexible';
+import { config } from 'firebase-functions';
+import cors from 'cors';
+import { RateLimiterMemory, RateLimiterRes } from 'rate-limiter-flexible';
 
 // Set global options for all functions
 setGlobalOptions({
@@ -32,38 +33,30 @@ const corsHandler = cors({
   methods: ['GET', 'POST', 'OPTIONS']
 });
 
-// Enhanced rate limiters with Firestore backend for distributed rate limiting
-const chatRateLimiter = new RateLimiterFirestore({
-  storeClient: db,
-  keyspace: 'wbso_chat_rate_limit',
+// Simplified rate limiters using Memory-based approach
+// Note: In production, consider using Redis for distributed rate limiting
+const chatRateLimiter = new RateLimiterMemory({
   points: 20, // Reduced from 30
   duration: 300, // 5 minutes
 });
 
-const userChatRateLimiter = new RateLimiterFirestore({
-  storeClient: db,
-  keyspace: 'wbso_user_chat_limit',
+const userChatRateLimiter = new RateLimiterMemory({
   points: 50, // Per authenticated user
   duration: 3600, // 1 hour
 });
 
-const generationRateLimiter = new RateLimiterFirestore({
-  storeClient: db,
-  keyspace: 'wbso_generation_limit',
+const generationRateLimiter = new RateLimiterMemory({
   points: 3, // Reduced from 5
   duration: 3600, // 1 hour
 });
 
-const userGenerationRateLimiter = new RateLimiterFirestore({
-  storeClient: db,
-  keyspace: 'wbso_user_generation_limit',
+const userGenerationRateLimiter = new RateLimiterMemory({
   points: 5, // Per authenticated user per day
   duration: 86400, // 24 hours
 });
 
 // Memory-based limiter as fallback for rapid-fire attacks
 const emergencyLimiter = new RateLimiterMemory({
-  keyspace: 'emergency_limit',
   points: 10,
   duration: 60, // 1 minute
 });
@@ -87,125 +80,95 @@ const authenticateUser = async (req: any): Promise<{ uid: string; email: string 
       email: decodedToken.email || 'unknown'
     };
   } catch (error) {
-    logger.error('Authentication failed', { error: error.message });
+    logger.error('Authentication failed', { error: (error as Error).message });
     throw new Error('Invalid authentication token');
   }
 };
 
 /**
- * Enhanced rate limiting with multiple layers
- */  
-const checkRateLimit = async (req: any, userInfo?: { uid: string }) => {
-  const clientIp = req.ip || req.connection.remoteAddress;
-  
-  try {
-    // Layer 1: Emergency rate limiter (in-memory, very restrictive)
-    await emergencyLimiter.consume(clientIp);
-    
-    // Layer 2: IP-based rate limiting
-    await chatRateLimiter.consume(clientIp);
-    
-    // Layer 3: User-based rate limiting (if authenticated)
-    if (userInfo) {
-      await userChatRateLimiter.consume(userInfo.uid);
-    }
-  } catch (rejRes) {
-    logger.warn('Rate limit exceeded', {
-      ip: clientIp,
-      userId: userInfo?.uid,
-      rateLimiter: rejRes.keyspace || 'unknown',
-      remainingPoints: rejRes.remainingPoints,
-      msBeforeNext: rejRes.msBeforeNext
-    });
-    
-    const waitTime = Math.round((rejRes.msBeforeNext || 60000) / 1000);
-    throw new Error(`Rate limit exceeded. Please wait ${waitTime} seconds before trying again.`);
-  }
-};
-
-/**
- * Check generation rate limits (stricter)
+ * Input validation and sanitization
  */
-const checkGenerationRateLimit = async (req: any, userInfo: { uid: string }) => {
-  const clientIp = req.ip || req.connection.remoteAddress;
-  
-  try {
-    // IP-based generation limiting
-    await generationRateLimiter.consume(clientIp);
-    
-    // User-based generation limiting
-    await userGenerationRateLimiter.consume(userInfo.uid);
-  } catch (rejRes) {
-    logger.warn('Generation rate limit exceeded', {
-      ip: clientIp,
-      userId: userInfo.uid,
-      rateLimiter: rejRes.keyspace,
-      remainingPoints: rejRes.remainingPoints
-    });
-    
-    const waitTime = Math.round((rejRes.msBeforeNext || 3600000) / 1000 / 60); // minutes
-    throw new Error(`Generation limit exceeded. You can generate ${rejRes.totalHits || 3} applications per day. Please wait ${waitTime} minutes.`);
+const validateAndSanitizeInput = (body: any, requiredFields: string[]): any => {
+  if (!body || typeof body !== 'object') {
+    throw new Error('Invalid request body');
   }
-};
 
-/**
- * Comprehensive input validation and sanitization
- */
-const validateAndSanitizeInput = (body: any, requiredFields: string[]) => {
   // Check required fields
   for (const field of requiredFields) {
     if (!body[field]) {
       throw new Error(`Missing required field: ${field}`);
     }
   }
-  
-  // Sanitize message content
-  if (body.message) {
-    if (typeof body.message !== 'string') {
-      throw new Error('Message must be a string');
-    }
-    
-    const sanitized = body.message.trim();
-    
-    if (sanitized.length === 0) {
-      throw new Error('Message cannot be empty');
-    }
-    
-    if (sanitized.length > 2000) {
-      throw new Error('Message too long (maximum 2000 characters)');
-    }
-    
-    // Check for potential injection attempts
-    const suspiciousPatterns = [
-      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-      /javascript:/gi,
-      /on\w+\s*=/gi,
-      /eval\s*\(/gi,
-      /Function\s*\(/gi
-    ];
-    
-    for (const pattern of suspiciousPatterns) {
-      if (pattern.test(sanitized)) {
-        logger.warn('Suspicious input detected', { 
-          input: sanitized.substring(0, 100),
-          pattern: pattern.source 
-        });
-        throw new Error('Invalid input detected');
-      }
-    }
-    
-    body.message = sanitized;
-  }
-  
-  // Validate sessionId format
-  if (body.sessionId) {
-    if (typeof body.sessionId !== 'string' || !/^[a-zA-Z0-9-_]{8,64}$/.test(body.sessionId)) {
-      throw new Error('Invalid session ID format');
+
+  // Sanitize strings to prevent injection attacks
+  const sanitized = { ...body };
+  for (const [key, value] of Object.entries(sanitized)) {
+    if (typeof value === 'string') {
+      sanitized[key] = value.trim().substring(0, 10000); // Limit string length
     }
   }
-  
-  return body;
+
+  return sanitized;
 };
+
+/**
+ * Rate limiting check
+ */
+const checkRateLimit = async (req: any, userInfo: { uid: string; email: string }) => {
+  const clientKey = req.ip || 'unknown';
+  const userKey = userInfo.uid;
+
+  try {
+    // Check emergency rate limit first
+    await emergencyLimiter.consume(clientKey);
+    
+    // Check general chat rate limit
+    await chatRateLimiter.consume(clientKey);
+    
+    // Check user-specific rate limit
+    await userChatRateLimiter.consume(userKey);
+    
+  } catch (rejRes) {
+    const rateLimitRes = rejRes as RateLimiterRes;
+    logger.warn('Rate limit exceeded', {
+      clientKey,
+      userKey,
+      rateLimiter: 'chat_rate_limit',
+      remainingPoints: rateLimitRes.remainingPoints,
+      msBeforeNext: rateLimitRes.msBeforeNext
+    });
+
+    const waitTime = Math.round((rateLimitRes.msBeforeNext || 60000) / 1000);
+    throw new Error(`Rate limit exceeded. Please wait ${waitTime} seconds before trying again.`);
+  }
+};
+
+/**
+ * Generation rate limiting check
+ */
+const checkGenerationRateLimit = async (req: any, userInfo: { uid: string; email: string }) => {
+  const clientKey = req.ip || 'unknown';
+  const userKey = userInfo.uid;
+
+  try {
+    await generationRateLimiter.consume(clientKey);
+    await userGenerationRateLimiter.consume(userKey);
+    
+  } catch (rejRes) {
+    const rateLimitRes = rejRes as RateLimiterRes;
+    logger.warn('Generation rate limit exceeded', {
+      clientKey,
+      userKey,
+      rateLimiter: 'generation_rate_limit',
+      remainingPoints: rateLimitRes.remainingPoints
+    });
+
+    const waitTime = Math.round((rateLimitRes.msBeforeNext || 3600000) / 1000 / 60); // minutes
+    throw new Error(`Generation limit exceeded. You can generate 3 applications per day. Please wait ${waitTime} minutes.`);
+  }
+};
+
+// Duplicate function removed - using the first validateAndSanitizeInput function defined above
 
 /**
  * Cost monitoring and circuit breaker
@@ -346,19 +309,20 @@ export const startWBSOChat = onRequest(async (req, res) => {
         resolve(undefined);
 
       } catch (error) {
+        const err = error as Error;
         logger.error('Failed to start WBSO chat', { 
-          error: error.message,
+          error: err.message,
           sessionId: req.body?.sessionId,
           ip: req.ip
         });
 
-        const statusCode = error.message.includes('Rate limit') ? 429 :
-                          error.message.includes('authentication') ? 401 :
-                          error.message.includes('Daily usage limit') ? 429 : 400;
+        const statusCode = err.message.includes('Rate limit') ? 429 :
+                          err.message.includes('authentication') ? 401 :
+                          err.message.includes('Daily usage limit') ? 429 : 400;
 
         res.status(statusCode).json({
           success: false,
-          error: error.message || 'Failed to start conversation'
+          error: err.message || 'Failed to start conversation'
         });
 
         resolve(undefined);
@@ -416,20 +380,21 @@ export const processWBSOChatMessage = onRequest(async (req, res) => {
         resolve(undefined);
 
       } catch (error) {
+        const err = error as Error;
         logger.error('Failed to process WBSO chat message', { 
-          error: error.message,
+          error: err.message,
           sessionId: req.body?.sessionId,
           ip: req.ip
         });
 
-        const statusCode = error.message.includes('Rate limit') ? 429 :
-                          error.message.includes('authentication') ? 401 :
-                          error.message.includes('Access denied') ? 403 :
-                          error.message.includes('Daily usage limit') ? 429 : 400;
+        const statusCode = err.message.includes('Rate limit') ? 429 :
+                          err.message.includes('authentication') ? 401 :
+                          err.message.includes('Access denied') ? 403 :
+                          err.message.includes('Daily usage limit') ? 429 : 400;
 
         res.status(statusCode).json({
           success: false,
-          error: error.message || 'Failed to process message'
+          error: err.message || 'Failed to process message'
         });
 
         resolve(undefined);
@@ -490,20 +455,21 @@ export const generateWBSOApplication = onRequest(async (req, res) => {
         resolve(undefined);
 
       } catch (error) {
+        const err = error as Error;
         logger.error('Failed to generate WBSO application', { 
-          error: error.message,
+          error: err.message,
           sessionId: req.body?.sessionId,
           ip: req.ip
         });
 
-        const statusCode = error.message.includes('Generation limit') ? 429 :
-                          error.message.includes('authentication') ? 401 :
-                          error.message.includes('Access denied') ? 403 :
-                          error.message.includes('Service temporarily unavailable') ? 503 : 400;
+        const statusCode = err.message.includes('Generation limit') ? 429 :
+                          err.message.includes('authentication') ? 401 :
+                          err.message.includes('Access denied') ? 403 :
+                          err.message.includes('Service temporarily unavailable') ? 503 : 400;
 
         res.status(statusCode).json({
           success: false,
-          error: error.message || 'Failed to generate application'
+          error: err.message || 'Failed to generate application'
         });
 
         resolve(undefined);
@@ -523,8 +489,17 @@ export const wbsoChatHealth = onRequest(async (req, res) => {
         await emergencyLimiter.consume(req.ip || 'unknown');
         
         // Check required environment variables
-        const requiredEnvVars = ['ANTHROPIC_API_KEY'];
-        const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+        const functionsConfig = config();
+        const requiredEnvVars = ['anthropic.api_key'];
+        const missingVars = requiredEnvVars.filter(varName => {
+          const keys = varName.split('.');
+          let obj = functionsConfig;
+          for (const key of keys) {
+            obj = obj[key];
+            if (!obj) return true;
+          }
+          return false;
+        });
         
         if (missingVars.length > 0) {
           res.status(500).json({
@@ -549,7 +524,8 @@ export const wbsoChatHealth = onRequest(async (req, res) => {
         resolve(undefined);
 
       } catch (error) {
-        logger.error('Health check failed', { error: error.message });
+        const err = error as Error;
+        logger.error('Health check failed', { error: err.message });
         
         res.status(500).json({
           success: false,

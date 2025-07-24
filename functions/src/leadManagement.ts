@@ -1,13 +1,17 @@
 import { onRequest } from 'firebase-functions/v2/https';
 import { onDocumentCreated } from 'firebase-functions/v2/firestore';
-import { initializeApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import * as nodemailer from 'nodemailer';
 import * as jwt from 'jsonwebtoken';
 import { getAuth } from 'firebase-admin/auth';
+import { logger } from 'firebase-functions';
 
-// Initialize Firebase Admin
-initializeApp();
+// At the top of the file, add proper typing for global analytics
+declare global {
+  var analyticsRateLimit: Map<string, number[]>;
+}
+
+// Firebase Admin is already initialized in index.ts
 const db = getFirestore();
 
 // Email transporter configuration
@@ -366,11 +370,18 @@ export const sendScheduledEmails = onRequest(
           });
           
         } catch (emailError) {
-          console.error('Email send error:', emailError);
+          const err = emailError as Error;
+          logger.error('Failed to send nurture email', {
+            leadId: emailData.lead_id,
+            emailType: 'nurture',
+            error: err.message,
+            template: emailData.template
+          });
+          
           // Mark as failed
           batch.update(emailDoc.ref, {
             status: 'failed',
-            error: emailError.message,
+            error: err.message,
             failed_at: new Date()
           });
         }
@@ -525,16 +536,15 @@ export const getLeadAnalytics = onRequest(
       const now = Date.now();
       const oneHour = 60 * 60 * 1000;
       
-      // Simple in-memory rate limiting (you could enhance with Firestore)
       if (!global.analyticsRateLimit) {
-        global.analyticsRateLimit = new Map();
+        global.analyticsRateLimit = new Map<string, number[]>();
       }
       
       const userRequests = global.analyticsRateLimit.get(rateLimitKey) || [];
-      const recentRequests = userRequests.filter(timestamp => now - timestamp < oneHour);
+      const recentRequests = userRequests.filter((timestamp: number) => now - timestamp < oneHour);
       
-      if (recentRequests.length >= 10) { // 10 requests per hour
-        res.status(429).json({ error: 'Rate limit exceeded. Max 10 requests per hour.' });
+      if (recentRequests.length >= 100) { // 100 requests per hour per lead
+        res.status(429).json({ error: 'Too many requests. Please try again later.' });
         return;
       }
       

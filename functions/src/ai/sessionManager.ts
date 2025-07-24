@@ -1,19 +1,15 @@
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions';
 
 export interface ConversationSession {
   id: string;
   phase: 'discovery' | 'clarification' | 'generation' | 'complete';
   extractedInfo: any;
-  messages: Array<{
-    role: 'user' | 'assistant' | 'system';
-    content: string;
-    timestamp?: Date;
-  }>;
+  messages: Array<{ role: string; content: string; timestamp?: Date }>;
   tokenCount: number;
   cost: number;
-  completeness: number;
-  userContext: any;
+  completeness?: number;
+  userContext?: any;
   createdAt: Date;
   updatedAt: Date;
   expiresAt: Date;
@@ -53,42 +49,48 @@ export class SessionManager {
       return session;
 
     } catch (error) {
-      logger.error('Failed to create session', { sessionId, error: error.message });
-      throw new Error(`Failed to create session: ${error.message}`);
+      const err = error as Error;
+      logger.error('Failed to create session', { sessionId, error: err.message });
+      throw new Error(`Failed to create session: ${err.message}`);
     }
   }
 
   /**
-   * Get an existing session
+   * Get a conversation session
    */
   async getSession(sessionId: string): Promise<ConversationSession | null> {
     try {
-      const doc = await this.db.collection(this.COLLECTION_NAME).doc(sessionId).get();
+      const sessionDoc = await this.db.collection(this.COLLECTION_NAME).doc(sessionId).get();
       
-      if (!doc.exists) {
-        logger.warn('Session not found', { sessionId });
+      if (!sessionDoc.exists) {
         return null;
       }
-
-      const session = doc.data() as ConversationSession;
       
-      // Check if session has expired
-      if (session.expiresAt && new Date() > session.expiresAt.toDate()) {
-        logger.warn('Session expired', { sessionId, expiresAt: session.expiresAt });
-        await this.deleteSession(sessionId);
-        return null;
+      const sessionData = sessionDoc.data() as ConversationSession;
+      
+      // Check if session has expired - handle both Date and Timestamp objects
+      if (sessionData.expiresAt) {
+        const expirationTime = sessionData.expiresAt instanceof Timestamp 
+          ? sessionData.expiresAt.toDate() 
+          : sessionData.expiresAt;
+        
+        if (new Date() > expirationTime) {
+          await this.deleteSession(sessionId);
+          return null;
+        }
       }
-
-      return session;
-
+      
+      return sessionData;
+      
     } catch (error) {
-      logger.error('Failed to get session', { sessionId, error: error.message });
-      throw new Error(`Failed to get session: ${error.message}`);
+      const err = error as Error;
+      logger.error('Failed to get session', { sessionId, error: err.message });
+      throw new Error(`Failed to get session: ${err.message}`);
     }
   }
 
   /**
-   * Update an existing session
+   * Update session data
    */
   async updateSession(sessionId: string, updates: Partial<ConversationSession>): Promise<void> {
     try {
@@ -96,64 +98,54 @@ export class SessionManager {
         ...updates,
         updatedAt: new Date()
       };
-
+      
       await this.db.collection(this.COLLECTION_NAME).doc(sessionId).update(updateData);
       
-      logger.info('Session updated successfully', { 
-        sessionId, 
-        updatedFields: Object.keys(updates) 
-      });
-
+      logger.debug('Session updated successfully', { sessionId, updates: Object.keys(updates) });
+      
     } catch (error) {
-      logger.error('Failed to update session', { sessionId, error: error.message });
-      throw new Error(`Failed to update session: ${error.message}`);
+      const err = error as Error;
+      logger.error('Failed to update session', { sessionId, error: err.message });
+      throw new Error(`Failed to update session: ${err.message}`);
     }
   }
 
   /**
    * Add a message to the session
    */
-  async addMessage(
-    sessionId: string, 
-    role: 'user' | 'assistant' | 'system', 
-    content: string
-  ): Promise<void> {
+  async addMessage(sessionId: string, role: 'user' | 'assistant', content: string): Promise<void> {
     try {
-      const session = await this.getSession(sessionId);
-      if (!session) {
-        throw new Error('Session not found');
-      }
-
-      const newMessage = {
+      const message = {
         role,
         content,
         timestamp: new Date()
       };
 
-      session.messages.push(newMessage);
-
-      await this.updateSession(sessionId, {
-        messages: session.messages
+      // Get current session and add the message
+      const sessionDoc = await this.db.collection(this.COLLECTION_NAME).doc(sessionId).get();
+      const currentMessages = sessionDoc.data()?.messages || [];
+      
+      // Update with new message array
+      await this.db.collection(this.COLLECTION_NAME).doc(sessionId).update({
+        messages: [...currentMessages, message],
+        updatedAt: new Date()
       });
 
-      logger.info('Message added to session', { 
-        sessionId, 
-        role, 
-        messageLength: content.length,
-        totalMessages: session.messages.length 
-      });
+      logger.debug('Message added to session', { sessionId, role, contentLength: content.length });
 
     } catch (error) {
-      logger.error('Failed to add message to session', { sessionId, error: error.message });
-      throw new Error(`Failed to add message: ${error.message}`);
+      const err = error as Error;
+      logger.error('Failed to add message to session', { sessionId, error: err.message });
+      throw new Error(`Failed to add message: ${err.message}`);
     }
   }
 
   /**
-   * Update extracted information from conversation
+   * Update extracted information
    */
-  async updateExtractedInfo(sessionId: string, info: any): Promise<void> {
+  async updateExtractedInfo(sessionId: string, newInfo: any): Promise<void> {
     try {
+      // Get current session to merge extracted info
       const session = await this.getSession(sessionId);
       if (!session) {
         throw new Error('Session not found');
@@ -161,26 +153,19 @@ export class SessionManager {
 
       const mergedInfo = {
         ...session.extractedInfo,
-        ...info
+        ...newInfo
       };
 
-      // Calculate completeness based on required fields
-      const completeness = this.calculateCompleteness(mergedInfo);
-
       await this.updateSession(sessionId, {
-        extractedInfo: mergedInfo,
-        completeness
+        extractedInfo: mergedInfo
       });
 
-      logger.info('Extracted info updated', { 
-        sessionId, 
-        completeness,
-        infoFields: Object.keys(info) 
-      });
+      logger.debug('Extracted info updated', { sessionId, newFields: Object.keys(newInfo) });
 
     } catch (error) {
-      logger.error('Failed to update extracted info', { sessionId, error: error.message });
-      throw new Error(`Failed to update extracted info: ${error.message}`);
+      const err = error as Error;
+      logger.error('Failed to update extracted info', { sessionId, error: err.message });
+      throw new Error(`Failed to update extracted info: ${err.message}`);
     }
   }
 
@@ -190,12 +175,11 @@ export class SessionManager {
   async updatePhase(sessionId: string, phase: ConversationSession['phase']): Promise<void> {
     try {
       await this.updateSession(sessionId, { phase });
-      
       logger.info('Session phase updated', { sessionId, phase });
-
     } catch (error) {
-      logger.error('Failed to update phase', { sessionId, error: error.message });
-      throw new Error(`Failed to update phase: ${error.message}`);
+      const err = error as Error;
+      logger.error('Failed to update phase', { sessionId, error: err.message });
+      throw new Error(`Failed to update phase: ${err.message}`);
     }
   }
 
@@ -205,95 +189,90 @@ export class SessionManager {
   async deleteSession(sessionId: string): Promise<void> {
     try {
       await this.db.collection(this.COLLECTION_NAME).doc(sessionId).delete();
-      
       logger.info('Session deleted', { sessionId });
-
     } catch (error) {
-      logger.error('Failed to delete session', { sessionId, error: error.message });
-      throw new Error(`Failed to delete session: ${error.message}`);
+      const err = error as Error;
+      logger.error('Failed to delete session', { sessionId, error: err.message });
+      throw new Error(`Failed to delete session: ${err.message}`);
     }
   }
 
   /**
-   * Clean up expired sessions (should be run periodically)
+   * Clean up expired sessions
    */
-  async cleanupExpiredSessions(): Promise<number> {
+  async cleanupExpiredSessions(): Promise<void> {
     try {
       const now = new Date();
       const expiredQuery = this.db.collection(this.COLLECTION_NAME)
         .where('expiresAt', '<', now)
         .limit(100);
 
-      const snapshot = await expiredQuery.get();
-      const deletions: Promise<void>[] = [];
+      const expiredSessions = await expiredQuery.get();
+      
+      if (expiredSessions.empty) {
+        logger.debug('No expired sessions to clean up');
+        return;
+      }
 
-      snapshot.forEach(doc => {
-        deletions.push(doc.ref.delete());
+      // Delete expired sessions in batches
+      const batch = this.db.batch();
+      expiredSessions.forEach(doc => {
+        batch.delete(doc.ref);
       });
 
-      await Promise.all(deletions);
+      await batch.commit();
       
-      logger.info('Expired sessions cleaned up', { count: deletions.length });
-      return deletions.length;
+      logger.info('Expired sessions cleaned up', { 
+        count: expiredSessions.size,
+        cleanupTime: now.toISOString()
+      });
 
     } catch (error) {
-      logger.error('Failed to cleanup expired sessions', { error: error.message });
-      throw new Error(`Failed to cleanup sessions: ${error.message}`);
+      const err = error as Error;
+      logger.error('Failed to cleanup expired sessions', { error: err.message });
+      throw new Error(`Failed to cleanup sessions: ${err.message}`);
     }
   }
 
   /**
-   * Calculate conversation completeness based on extracted information
+   * Get session statistics
    */
-  private calculateCompleteness(extractedInfo: any): number {
-    const requiredFields = [
-      'projectTitle',
-      'projectType',
-      'problemDescription',
-      'proposedSolution',
-      'technicalChallenges',
-      'innovationAspects',
-      'timeline',
-      'teamSize',
-      'companyInfo'
-    ];
-
-    const providedFields = requiredFields.filter(field => 
-      extractedInfo[field] && 
-      (typeof extractedInfo[field] === 'string' ? extractedInfo[field].trim() : true)
-    );
-
-    const completeness = Math.round((providedFields.length / requiredFields.length) * 100);
-    
-    return Math.min(100, completeness);
-  }
-
-  /**
-   * Get session statistics for monitoring
-   */
-  async getSessionStats(sessionId: string): Promise<{
-    messageCount: number;
-    totalCost: number;
-    tokenCount: number;
-    duration: number;
-    completeness: number;
-  } | null> {
+  async getSessionStats(sessionId?: string): Promise<any> {
     try {
-      const session = await this.getSession(sessionId);
-      if (!session) return null;
+      if (sessionId) {
+        // Get stats for specific session
+        const session = await this.getSession(sessionId);
+        if (!session) {
+          return null;
+        }
 
-      const duration = new Date().getTime() - session.createdAt.getTime();
+        return {
+          sessionId,
+          phase: session.phase,
+          messageCount: session.messages.length,
+          tokenCount: session.tokenCount,
+          cost: session.cost,
+          completeness: session.completeness,
+          age: new Date().getTime() - session.createdAt.getTime(),
+          isExpired: session.expiresAt ? new Date() > session.expiresAt : false
+        };
+      } else {
+        // Get general stats
+        const totalSessions = await this.db.collection(this.COLLECTION_NAME).count().get();
+        const activeSessions = await this.db.collection(this.COLLECTION_NAME)
+          .where('expiresAt', '>', new Date())
+          .count().get();
 
-      return {
-        messageCount: session.messages.length,
-        totalCost: session.cost,
-        tokenCount: session.tokenCount,
-        duration: Math.round(duration / 1000), // seconds
-        completeness: session.completeness
-      };
+        return {
+          totalSessions: totalSessions.data().count,
+          activeSessions: activeSessions.data().count,
+          expiredSessions: totalSessions.data().count - activeSessions.data().count
+        };
+      }
 
     } catch (error) {
-      logger.error('Failed to get session stats', { sessionId, error: error.message });
+      const err = error as Error;
+      logger.error('Failed to get session stats', { sessionId, error: err.message });
       return null;
     }
   }
