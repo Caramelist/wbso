@@ -10,7 +10,6 @@ export interface ChatResponse {
   sessionId: string;
   phase: 'discovery' | 'clarification' | 'generation' | 'complete';
   completeness: number;
-  cost: number;
   readyForGeneration: boolean;
   extractedInfo?: any;
 }
@@ -37,9 +36,22 @@ export class ConversationManager {
       // Add user message to session
       await this.sessionManager.addMessage(sessionId, 'user', userMessage);
 
-      // Build conversation context
-      const conversationHistory = this.buildConversationHistory(session);
-      const systemPrompt = this.buildContextualSystemPrompt(session);
+      // Get updated session with the new user message included
+      const updatedSessionWithUserMessage = await this.sessionManager.getSession(sessionId);
+      if (!updatedSessionWithUserMessage) {
+        throw new Error('Failed to retrieve session after adding user message');
+      }
+
+      // Build conversation context with complete history including current user message
+      const conversationHistory = this.buildConversationHistory(updatedSessionWithUserMessage);
+      const systemPrompt = this.buildContextualSystemPrompt(updatedSessionWithUserMessage);
+
+      logger.info('Sending conversation to Claude', {
+        sessionId,
+        messageCount: conversationHistory.length,
+        lastUserMessage: userMessage.substring(0, 100) + '...',
+        systemPromptLength: systemPrompt.length
+      });
 
       // Get response from Claude
       const response = await this.claude.messages.create({
@@ -53,22 +65,36 @@ export class ConversationManager {
       // Extract text from response (handle different content types)
       const assistantResponse = this.extractTextFromResponse(response);
 
-      // Calculate costs
-      const inputTokens = this.tokenCounter.count(systemPrompt + userMessage);
-      const outputTokens = this.tokenCounter.count(assistantResponse);
-      const messageCost = this.tokenCounter.calculateCost(inputTokens, outputTokens, 
+      // Use ACTUAL token usage from Anthropic API response instead of approximation
+      const actualInputTokens = response.usage.input_tokens;
+      const actualOutputTokens = response.usage.output_tokens;
+      const messageCost = this.tokenCounter.calculateCost(actualInputTokens, actualOutputTokens, 
         process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022');
+
+      logger.info('Actual token usage', {
+        sessionId,
+        inputTokens: actualInputTokens,
+        outputTokens: actualOutputTokens,
+        totalTokens: actualInputTokens + actualOutputTokens,
+        cost: messageCost
+      });
 
       // Add assistant response to session
       await this.sessionManager.addMessage(sessionId, 'assistant', assistantResponse);
 
-      // Extract information from the conversation
-      const extractedInfo = await this.extractInformation(sessionId, userMessage, assistantResponse, session);
+      // Extract information from the conversation using updated session
+      const extractedInfo = await this.extractInformation(sessionId, userMessage, assistantResponse, updatedSessionWithUserMessage);
 
-      // Update session with costs and extracted info
+      // Get updated session after extraction (which includes extraction costs)
+      const updatedSessionAfterExtraction = await this.sessionManager.getSession(sessionId);
+      if (!updatedSessionAfterExtraction) {
+        throw new Error('Failed to retrieve session after extraction');
+      }
+
+      // Update session with main conversation costs only (extraction costs already added)
       await this.sessionManager.updateSession(sessionId, {
-        tokenCount: session.tokenCount + inputTokens + outputTokens,
-        cost: session.cost + messageCost
+        tokenCount: updatedSessionAfterExtraction.tokenCount + actualInputTokens + actualOutputTokens,
+        cost: updatedSessionAfterExtraction.cost + messageCost
       });
 
       if (extractedInfo && Object.keys(extractedInfo).length > 0) {
@@ -94,7 +120,6 @@ export class ConversationManager {
         sessionId,
         phase: nextPhase,
         completeness,
-        cost: messageCost,
         readyForGeneration: completeness >= 80,
         extractedInfo
       };
@@ -133,16 +158,24 @@ Return the response as a JSON object with the exact structure expected by the sy
       const generatedContent = this.extractTextFromResponse(response);
       const application = this.parseGeneratedApplication(generatedContent, session);
 
-      // Calculate costs
-      const inputTokens = this.tokenCounter.count(generationPrompt);
-      const outputTokens = this.tokenCounter.count(generatedContent);
-      const generationCost = this.tokenCounter.calculateCost(inputTokens, outputTokens, 
+      // Use ACTUAL token usage from Anthropic API response instead of approximation
+      const actualInputTokens = response.usage.input_tokens;
+      const actualOutputTokens = response.usage.output_tokens;
+      const generationCost = this.tokenCounter.calculateCost(actualInputTokens, actualOutputTokens, 
         process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022');
+
+      logger.info('Application generation - actual token usage', {
+        sessionId: session.id,
+        inputTokens: actualInputTokens,
+        outputTokens: actualOutputTokens,
+        totalTokens: actualInputTokens + actualOutputTokens,
+        cost: generationCost
+      });
 
       // Update session
       await this.sessionManager.updateSession(session.id, {
         phase: 'complete',
-        tokenCount: session.tokenCount + inputTokens + outputTokens,
+        tokenCount: session.tokenCount + actualInputTokens + actualOutputTokens,
         cost: session.cost + generationCost,
         completeness: 100
       });
@@ -180,10 +213,21 @@ Return the response as a JSON object with the exact structure expected by the sy
    * Build conversation history with proper typing
    */
   private buildConversationHistory(session: ConversationSession): Anthropic.Messages.MessageParam[] {
-    return session.messages.map(msg => ({
+    const history = session.messages.map(msg => ({
       role: msg.role as 'user' | 'assistant',
       content: msg.content
     }));
+    
+    logger.info('Built conversation history', {
+      sessionId: session.id,
+      messageCount: history.length,
+      lastMessages: history.slice(-3).map(msg => ({
+        role: msg.role,
+        preview: msg.content.substring(0, 100) + '...'
+      }))
+    });
+    
+    return history;
   }
 
   private buildContextualSystemPrompt(session: ConversationSession): string {
@@ -262,9 +306,25 @@ Return only new or updated information as JSON. If nothing specific was mentione
 
       const extracted = this.parseExtractedInfo(this.extractTextFromResponse(extractionResponse));
       
-      logger.info('Information extracted from conversation', {
+      // Use actual token usage from Anthropic API response for extraction
+      const extractionInputTokens = extractionResponse.usage.input_tokens;
+      const extractionOutputTokens = extractionResponse.usage.output_tokens;
+      const extractionCost = this.tokenCounter.calculateCost(extractionInputTokens, extractionOutputTokens, 
+        process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022');
+
+      logger.info('Information extraction - actual token usage', {
         sessionId,
+        inputTokens: extractionInputTokens,
+        outputTokens: extractionOutputTokens,
+        totalTokens: extractionInputTokens + extractionOutputTokens,
+        cost: extractionCost,
         extractedFields: Object.keys(extracted)
+      });
+
+      // Add extraction costs to session
+      await this.sessionManager.updateSession(sessionId, {
+        tokenCount: session.tokenCount + extractionInputTokens + extractionOutputTokens,
+        cost: session.cost + extractionCost
       });
 
       return extracted;

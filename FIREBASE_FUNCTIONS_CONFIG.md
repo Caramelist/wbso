@@ -1,4 +1,36 @@
-# Firebase Functions v2 Environment Configuration
+# Firebase Functions Configuration Guide
+
+## 🔒 SECURITY CRITICAL CONFIGURATIONS
+
+### **⚠️ MANDATORY SECRETS** - Must be set before deployment
+```bash
+# CRITICAL: Set these with strong values
+firebase functions:secrets:set ANTHROPIC_API_KEY="your-actual-anthropic-key"
+firebase functions:secrets:set LEAD_TOKEN_SECRET="$(openssl rand -base64 32)"  
+firebase functions:secrets:set INTERNAL_CALL_SECRET="$(openssl rand -base64 32)"
+firebase functions:secrets:set SMTP_PASS="your-strong-smtp-password"
+firebase functions:secrets:set SENDGRID_API_KEY="your-sendgrid-api-key"
+firebase functions:secrets:set KVK_API_KEY="your-kvk-api-key"
+```
+
+### **🛡️ SECURITY ENVIRONMENT VARIABLES** - Recommended values
+```bash
+# Cost protection limits (ADJUST FOR YOUR BUDGET)
+firebase functions:config:set app.max_cost_per_session="5.00"      # $5 per chat session
+firebase functions:config:set app.daily_cost_limit="500.00"       # $500 global daily limit  
+firebase functions:config:set app.user_daily_cost_limit="10.00"   # $10 per user daily
+
+# Environment configuration
+firebase functions:config:set app.environment="production"
+firebase functions:config:set app.frontend_url="https://app.wbsosimpel.nl"
+
+# AI Model configuration
+firebase functions:config:set anthropic.model="claude-3-5-sonnet-20241022"
+```
+
+## 📋 Standard Configuration
+
+### **1. Secrets Management** (Firebase Functions v2)
 
 ## ⚠️ IMPORTANT: Migration from functions.config() to Environment Variables
 

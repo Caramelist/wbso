@@ -18,7 +18,8 @@ export {
   startWBSOChat,
   processWBSOChatMessage,
   generateWBSOApplication,
-  wbsoChatHealth
+  wbsoChatHealth,
+  debugWBSOChatSession
 } from './ai/chatEndpoints';
 
 // Export user management functions - EU ONLY

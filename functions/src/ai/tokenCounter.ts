@@ -1,12 +1,13 @@
 /**
  * Token counter for Claude API cost management
- * Uses approximation since we don't have access to Claude's exact tokenizer
+ * NOW USES ACTUAL token usage from Anthropic API responses for accurate cost calculation
+ * Approximation methods kept for estimation purposes only
  */
 export class TokenCounter {
   private pricing: Record<string, { input: number; output: number }>;
 
   constructor() {
-    // Claude pricing per token (as of 2024)
+    // Claude pricing per token (updated Dec 2024)
     this.pricing = {
       'claude-3-5-sonnet-20241022': {
         input: 3.00 / 1_000_000,   // $3 per 1M input tokens
@@ -24,9 +25,26 @@ export class TokenCounter {
   }
 
   /**
-   * Approximate token count for text
+   * Calculate EXACT cost using actual token counts from Anthropic API
+   * This is now the primary method used throughout the system
+   */
+  calculateCost(inputTokens: number, outputTokens: number, model: string): number {
+    const rates = this.pricing[model];
+    if (!rates) {
+      throw new Error(`Unknown model pricing: ${model}`);
+    }
+    
+    const inputCost = inputTokens * rates.input;
+    const outputCost = outputTokens * rates.output;
+    
+    return Number((inputCost + outputCost).toFixed(6));
+  }
+
+  /**
+   * Approximate token count for text - FOR ESTIMATION ONLY
+   * ⚠️  DEPRECATED: Use actual token counts from Anthropic API responses instead
    * Rule of thumb: 1 token ≈ 4 characters for English text
-   * Claude tokenizer may differ, but this provides reasonable estimation
+   * Claude tokenizer may differ significantly, causing cost calculation errors
    */
   count(text: string): number {
     if (!text) return 0;
@@ -39,21 +57,6 @@ export class TokenCounter {
     const approximateTokens = Math.ceil(cleanText.length / 3.5);
     
     return approximateTokens;
-  }
-
-  /**
-   * Calculate cost for API call with input and output tokens
-   */
-  calculateCost(inputTokens: number, outputTokens: number, model: string): number {
-    const rates = this.pricing[model];
-    if (!rates) {
-      throw new Error(`Unknown model pricing: ${model}`);
-    }
-    
-    const inputCost = inputTokens * rates.input;
-    const outputCost = outputTokens * rates.output;
-    
-    return Number((inputCost + outputCost).toFixed(6));
   }
 
   /**

@@ -99,25 +99,32 @@ export class WBSOAgent {
       // Extract text from response (handle different content types)
       const responseText = this.extractTextFromResponse(response);
 
-      // Track costs and tokens
-      const inputTokens = this.tokenCounter.count(systemPrompt + contextualGreeting);
-      const outputTokens = this.tokenCounter.count(responseText);
-      const cost = this.tokenCounter.calculateCost(inputTokens, outputTokens, this.config.model);
+      // Use ACTUAL token usage from Anthropic API response instead of approximation
+      const actualInputTokens = response.usage.input_tokens;
+      const actualOutputTokens = response.usage.output_tokens;
+      const cost = this.tokenCounter.calculateCost(actualInputTokens, actualOutputTokens, this.config.model);
+      
+      logger.info('Conversation start - actual token usage', {
+        sessionId,
+        inputTokens: actualInputTokens,
+        outputTokens: actualOutputTokens,
+        totalTokens: actualInputTokens + actualOutputTokens,
+        cost: cost
+      });
       
       await this.sessionManager.updateSession(sessionId, {
         messages: [{ role: "assistant", content: responseText }],
-        tokenCount: inputTokens + outputTokens,
+        tokenCount: actualInputTokens + actualOutputTokens,
         cost: cost
       });
 
-      logger.info('Conversation started successfully', { sessionId, cost, tokens: inputTokens + outputTokens });
+      logger.info('Conversation started successfully', { sessionId, cost, tokens: actualInputTokens + actualOutputTokens });
 
       return {
         message: responseText,
         sessionId,
         phase: 'discovery',
         completeness: 0,
-        cost: cost,
         readyForGeneration: false
       };
       
