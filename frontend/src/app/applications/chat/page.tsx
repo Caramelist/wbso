@@ -1,9 +1,9 @@
 import { Suspense } from 'react';
-import dynamic from 'next/dynamic';
+import dynamicImport from 'next/dynamic';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 
 // Dynamic import to prevent SSR issues with contexts
-const WBSOChatInterface = dynamic(() => import('@/components/wbso/WBSOChatInterface'), {
+const WBSOChatInterface = dynamicImport(() => import('@/components/wbso/WBSOChatInterface'), {
   ssr: false,
   loading: () => <LoadingSpinner />
 });
