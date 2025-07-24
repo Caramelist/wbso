@@ -1,11 +1,15 @@
 [build]
   base = "frontend"
   command = "npm ci && npm run build"
-  publish = "out"
+  publish = ".next"
 
 [build.environment]
   NODE_VERSION = "20"
   SECRETS_SCAN_ENABLED = "false"
+
+# Next.js specific configuration
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
 
 # Static files should not be redirected
 [[redirects]]
@@ -16,12 +20,6 @@
 [[redirects]]
   from = "/site.webmanifest"
   to = "/site.webmanifest"
-  status = 200
-
-# SPA routing for everything else
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
   status = 200
 
 # Security headers (fix X-Frame-Options warning)

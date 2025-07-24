@@ -1,29 +1,71 @@
-import { Suspense } from 'react';
+'use client';
+
+import { Suspense, useEffect, useState } from 'react';
 import dynamicImport from 'next/dynamic';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
 
-// Dynamic import to prevent SSR issues with contexts
+// Helper to check if we're in browser
+function isBrowser(): boolean {
+  return typeof window !== 'undefined';
+}
+
+// Dynamic import with complete SSR disabling
 const WBSOChatInterface = dynamicImport(() => import('@/components/wbso/WBSOChatInterface'), {
   ssr: false,
-  loading: () => <LoadingSpinner />
+  loading: () => (
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="text-center">
+        <LoadingSpinner size="lg" />
+        <p className="mt-4 text-gray-600">WBSO AI Assistent wordt geladen...</p>
+      </div>
+    </div>
+  )
 });
-
-export const metadata = {
-  title: 'WBSO AI Assistent | WBSO Simpel',
-  description: 'Creëer uw WBSO-aanvraag met behulp van onze AI-assistent. Eenvoudig, snel en professioneel.',
-};
 
 // Force dynamic rendering to prevent build-time context issues
 export const dynamic = 'force-dynamic';
 
-export default function WBSOChatPage() {
+// Server-safe component that only renders in browser
+function ChatPageContent() {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Don't render anything until we're in the browser
+  if (!isMounted || !isBrowser()) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <LoadingSpinner size="lg" />
+          <p className="mt-4 text-gray-600">WBSO AI Assistent wordt geladen...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto py-8">
-        <Suspense fallback={<LoadingSpinner />}>
-          <WBSOChatInterface />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+              <div className="text-center">
+                <LoadingSpinner size="lg" />
+                <p className="mt-4 text-gray-600">WBSO AI Assistent wordt geladen...</p>
+              </div>
+            </div>
+          }>
+            <WBSOChatInterface />
+          </Suspense>
+        </ErrorBoundary>
       </div>
     </div>
   );
+}
+
+export default function WBSOChatPage() {
+  return <ChatPageContent />;
 } 

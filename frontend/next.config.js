@@ -2,9 +2,8 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  output: 'export',
-  trailingSlash: true,
-  distDir: 'out',
+  // Removed static export configuration to support API routes
+  trailingSlash: false,
   images: {
     unoptimized: true,
   },
@@ -22,6 +21,10 @@ const nextConfig = {
     };
 
     return config;
+  },
+  // Add experimental features for better SSR handling
+  experimental: {
+    serverComponentsExternalPackages: ['firebase-admin'],
   },
 };
 

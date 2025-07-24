@@ -18,6 +18,11 @@ import { auth, db } from '@/lib/firebase';
 import { User, UserRole, SubscriptionTier } from '@/types';
 import toast from 'react-hot-toast';
 
+// Helper function to check if we're in a browser environment
+function isBrowser(): boolean {
+  return typeof window !== 'undefined';
+}
+
 interface AuthContextType {
   user: User | null;
   firebaseUser: FirebaseUser | null;
@@ -52,13 +57,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize Google Auth Provider
-  const googleProvider = new GoogleAuthProvider();
-  googleProvider.addScope('email');
-  googleProvider.addScope('profile');
+  // Initialize Google Auth Provider only in browser
+  const getGoogleProvider = () => {
+    if (!isBrowser()) return null;
+    const googleProvider = new GoogleAuthProvider();
+    googleProvider.addScope('email');
+    googleProvider.addScope('profile');
+    return googleProvider;
+  };
 
   // Create or update user profile in Firestore
   const createUserProfile = async (firebaseUser: FirebaseUser): Promise<User> => {
+    if (!isBrowser() || !db) {
+      throw new Error('Database not available');
+    }
+
     const userRef = doc(db, 'users', firebaseUser.uid);
     const userSnap = await getDoc(userRef);
 
@@ -107,6 +120,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Fetch user profile from Firestore
   const fetchUserProfile = async (firebaseUser: FirebaseUser): Promise<User | null> => {
+    if (!isBrowser() || !db) return null;
+    
     try {
       const userRef = doc(db, 'users', firebaseUser.uid);
       const userSnap = await getDoc(userRef);
@@ -124,8 +139,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Sign in with Google
   const signInWithGoogle = async (): Promise<void> => {
-    if (!auth) {
-      toast.error('Authentication not available in demo mode');
+    if (!isBrowser() || !auth) {
+      toast.error('Authentication not available');
+      return;
+    }
+
+    const googleProvider = getGoogleProvider();
+    if (!googleProvider) {
+      toast.error('Google authentication not available');
       return;
     }
 
@@ -153,8 +174,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Sign in with Email/Password
   const signInWithEmail = async (email: string, password: string): Promise<void> => {
-    if (!auth) {
-      toast.error('Authentication not available in demo mode');
+    if (!isBrowser() || !auth) {
+      toast.error('Authentication not available');
       return;
     }
 
@@ -192,8 +213,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Sign up with Email/Password
   const signUpWithEmail = async (email: string, password: string, displayName?: string): Promise<void> => {
-    if (!auth) {
-      toast.error('Authentication not available in demo mode');
+    if (!isBrowser() || !auth) {
+      toast.error('Authentication not available');
       return;
     }
 
@@ -240,8 +261,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Reset Password
   const resetPassword = async (email: string): Promise<void> => {
-    if (!auth) {
-      toast.error('Authentication not available in demo mode');
+    if (!isBrowser() || !auth) {
+      toast.error('Authentication not available');
       return;
     }
 
@@ -270,8 +291,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Sign out
   const logout = async (): Promise<void> => {
-    if (!auth) {
-      toast.error('Authentication not available in demo mode');
+    if (!isBrowser() || !auth) {
+      toast.error('Authentication not available');
       return;
     }
 
@@ -292,8 +313,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Update user profile
   const updateUserProfile = async (updates: Partial<User>): Promise<void> => {
-    if (!db) {
-      toast.error('Database not available in demo mode');
+    if (!isBrowser() || !db) {
+      toast.error('Database not available');
       return;
     }
     if (!user) throw new Error('No user logged in');
@@ -339,7 +360,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   // Listen to Firebase Auth state changes
   useEffect(() => {
-    // If Firebase is not available (development mode without config), just set loading to false
+    // Only run in browser environment
+    if (!isBrowser()) {
+      console.log('🔥 Running in SSR mode - skipping Firebase Auth initialization');
+      setLoading(false);
+      return;
+    }
+
+    // If Firebase is not available, just set loading to false
     if (!auth) {
       console.log('🔥 Firebase Auth not available - running in demo mode');
       setLoading(false);

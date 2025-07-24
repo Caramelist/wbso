@@ -21,6 +21,11 @@ function getNestedValue(obj: any, path: string): string {
   return path.split('.').reduce((current, key) => current?.[key], obj) || path;
 }
 
+// Helper function to check if we're in a browser environment
+function isBrowser(): boolean {
+  return typeof window !== 'undefined';
+}
+
 interface LanguageProviderProps {
   children: ReactNode;
 }
@@ -28,23 +33,36 @@ interface LanguageProviderProps {
 export function LanguageProvider({ children }: LanguageProviderProps) {
   const [locale, setLocaleState] = useState<Locale>('nl');
 
-  // Load saved language preference on mount
+  // Load saved language preference on mount (browser only)
   useEffect(() => {
-    const savedLocale = localStorage.getItem('wbso-locale') as Locale;
-    if (savedLocale && (savedLocale === 'nl' || savedLocale === 'en')) {
-      setLocaleState(savedLocale);
-    } else {
-      // Detect browser language
-      const browserLanguage = navigator.language.toLowerCase();
-      if (browserLanguage.startsWith('en')) {
-        setLocaleState('en');
+    if (!isBrowser()) return;
+    
+    try {
+      const savedLocale = localStorage.getItem('wbso-locale') as Locale;
+      if (savedLocale && (savedLocale === 'nl' || savedLocale === 'en')) {
+        setLocaleState(savedLocale);
+      } else {
+        // Detect browser language
+        const browserLanguage = navigator.language.toLowerCase();
+        if (browserLanguage.startsWith('en')) {
+          setLocaleState('en');
+        }
       }
+    } catch (error) {
+      console.warn('Failed to load language preference:', error);
+      // Fallback to default 'nl'
     }
   }, []);
 
   const setLocale = (newLocale: Locale) => {
     setLocaleState(newLocale);
-    localStorage.setItem('wbso-locale', newLocale);
+    if (isBrowser()) {
+      try {
+        localStorage.setItem('wbso-locale', newLocale);
+      } catch (error) {
+        console.warn('Failed to save language preference:', error);
+      }
+    }
   };
 
   const t = (key: string): string => {
