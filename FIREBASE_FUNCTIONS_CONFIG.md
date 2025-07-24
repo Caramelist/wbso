@@ -1,211 +1,275 @@
-# Firebase Functions Environment Configuration
+# Firebase Functions v2 Environment Configuration
 
-## Setting Up Environment Variables
+## ⚠️ IMPORTANT: Migration from functions.config() to Environment Variables
 
-Firebase Functions use the Firebase CLI to set environment variables. Run these commands in your terminal:
+**Firebase Functions v2 no longer supports `functions.config()`**. This document has been updated to show the correct way to configure environment variables for Firebase Functions v2.
 
-### 🤖 OpenAI Configuration
+## Setting Up Environment Variables for Firebase Functions v2
+
+Firebase Functions v2 uses environment variables and secrets instead of the deprecated `functions.config()`. Here are the methods to configure your environment:
+
+### 🔐 Secrets (for sensitive data like API keys)
+
+Use Firebase CLI to set secrets:
+
+#### 🤖 Anthropic Configuration (REQUIRED)
 ```bash
-# OpenAI API Key for AI content generation
-firebase functions:config:set openai.api_key="sk-proj-...your_openai_api_key"
+# Set the Anthropic API key as a secret (REQUIRED)
+firebase functions:secrets:set ANTHROPIC_API_KEY
+# You will be prompted to enter your API key securely
 
-# Optional: OpenAI Organization ID
-firebase functions:config:set openai.organization="org-...your_org_id"
-
-# AI Model Configuration
-firebase functions:config:set openai.model="gpt-4"
-firebase functions:config:set openai.max_tokens="4000"
-firebase functions:config:set openai.temperature="0.7"
+# Alternative: Set from a file
+echo "your_anthropic_api_key" | firebase functions:secrets:set ANTHROPIC_API_KEY --data-file=-
 ```
 
-### 🏢 KVK API Configuration
-```bash
-# KVK (Dutch Chamber of Commerce) API
-firebase functions:config:set kvk.api_key="your_kvk_api_key"
-firebase functions:config:set kvk.base_url="https://api.kvk.nl/api/v1"
-
-# KVK Test API (for development)
-firebase functions:config:set kvk.test_api_key="your_test_kvk_api_key"
-firebase functions:config:set kvk.test_base_url="https://api.kvk.nl/test/api/v1"
-```
-
-### 💳 Stripe Configuration
+#### 💳 Stripe Configuration (if using payments)
 ```bash
 # Stripe Secret Keys
-firebase functions:config:set stripe.secret_key="sk_test_...your_stripe_secret_key"
-firebase functions:config:set stripe.webhook_secret="whsec_...your_webhook_secret"
-
-# Stripe Product IDs
-firebase functions:config:set stripe.price_free="price_...free_plan_id"
-firebase functions:config:set stripe.price_pro="price_...pro_plan_id"
-firebase functions:config:set stripe.price_enterprise="price_...enterprise_plan_id"
+firebase functions:secrets:set STRIPE_SECRET_KEY
+firebase functions:secrets:set STRIPE_WEBHOOK_SECRET
 ```
 
-### 📧 Email Configuration (SendGrid/Nodemailer)
+#### 📧 Email Configuration (if using email services)
 ```bash
-# SendGrid
-firebase functions:config:set sendgrid.api_key="SG.your_sendgrid_api_key"
-firebase functions:config:set sendgrid.from_email="noreply@wbso-platform.com"
-firebase functions:config:set sendgrid.from_name="WBSO Platform"
+# SMTP credentials
+firebase functions:secrets:set SMTP_USER
+firebase functions:secrets:set SMTP_PASS
 
-# Or SMTP configuration
+# SendGrid API key
+firebase functions:secrets:set SENDGRID_API_KEY
+```
+
+#### 🏢 KVK API Configuration (if using Dutch Chamber of Commerce API)
+```bash
+# KVK API key
+firebase functions:secrets:set KVK_API_KEY
+```
+
+### 🌍 Environment Variables (for non-sensitive configuration)
+
+Set environment variables using the Firebase CLI:
+
+```bash
+# AI Model Configuration
+firebase functions:config:set anthropic.model="claude-3-5-sonnet-20241022"
+
+# Cost Limiting Configuration
+firebase functions:config:set app.max_cost_per_session="5.00"
+firebase functions:config:set app.daily_cost_limit="500.00" 
+firebase functions:config:set app.user_daily_cost_limit="10.00"
+
+# Environment Settings
+firebase functions:config:set app.environment="production"
+firebase functions:config:set app.frontend_url="https://app.wbsosimpel.nl"
+
+# SMTP Configuration (non-sensitive)
 firebase functions:config:set smtp.host="smtp.gmail.com"
 firebase functions:config:set smtp.port="587"
-firebase functions:config:set smtp.user="your_email@gmail.com"
-firebase functions:config:set smtp.password="your_app_password"
+firebase functions:config:set smtp.from="noreply@wbsosimpel.nl"
 ```
 
-### 🔐 Security Configuration
+**Note**: For Firebase Functions v2, these will be available as `process.env.ANTHROPIC_MODEL`, `process.env.MAX_COST_PER_SESSION`, etc.
+
+### 📋 Required Configuration for WBSO Application
+
+Here's the minimum required setup:
+
 ```bash
-# JWT Secret for additional security
-firebase functions:config:set security.jwt_secret="your_super_secret_jwt_key"
+# 1. Set required secrets
+firebase functions:secrets:set ANTHROPIC_API_KEY
 
-# Rate limiting configuration
-firebase functions:config:set rate_limit.window_ms="900000"
-firebase functions:config:set rate_limit.max_requests="100"
+# 2. Set basic configuration (optional, has defaults)
+firebase functions:config:set anthropic.model="claude-3-5-sonnet-20241022"
+firebase functions:config:set app.max_cost_per_session="5.00"
+firebase functions:config:set app.daily_cost_limit="500.00"
+firebase functions:config:set app.user_daily_cost_limit="10.00"
 
-# CORS allowed origins
-firebase functions:config:set cors.allowed_origins="http://localhost:3000,https://wbso-platform.com"
-```
-
-### 📊 Analytics & Monitoring
-```bash
-# Sentry for error tracking
-firebase functions:config:set sentry.dsn="https://...your_sentry_dsn"
-
-# Google Analytics (server-side)
-firebase functions:config:set analytics.ga_measurement_id="G-XXXXXXXXXX"
-firebase functions:config:set analytics.ga_api_secret="your_measurement_protocol_secret"
-```
-
-### 🌍 Environment-Specific Settings
-```bash
-# Environment identifier
-firebase functions:config:set app.environment="development"
-firebase functions:config:set app.debug="true"
-firebase functions:config:set app.log_level="debug"
-
-# App URLs
-firebase functions:config:set app.frontend_url="http://localhost:3000"
-firebase functions:config:set app.admin_email="admin@wbso-platform.com"
-```
-
-### 🔄 RVO Integration
-```bash
-# RVO Portal configuration (for form automation)
-firebase functions:config:set rvo.portal_url="https://www.rvo.nl"
-firebase functions:config:set rvo.api_endpoint="https://api.rvo.nl"
-
-# Form field mappings
-firebase functions:config:set rvo.form_timeout="30000"
-firebase functions:config:set rvo.max_retries="3"
-```
-
-## Commands to Run
-
-### 1. Basic Setup (Required)
-```bash
-# Essential configurations
-firebase functions:config:set openai.api_key="your_openai_key"
-firebase functions:config:set kvk.api_key="your_kvk_key"
-firebase functions:config:set stripe.secret_key="your_stripe_key"
-firebase functions:config:set app.environment="development"
-firebase functions:config:set app.frontend_url="http://localhost:3000"
-```
-
-### 2. View Current Configuration
-```bash
-# See all set configurations
-firebase functions:config:get
-
-# See specific configuration
-firebase functions:config:get openai
-```
-
-### 3. Delete Configuration (if needed)
-```bash
-# Delete specific key
-firebase functions:config:unset openai.api_key
-
-# Delete entire section
-firebase functions:config:unset openai
-```
-
-### 4. Deploy Configuration
-```bash
-# Deploy functions with new configuration
+# 3. Deploy functions
 firebase deploy --only functions
+```
+
+## Code Usage in Firebase Functions v2
+
+### ✅ Correct Way (v2)
+
+```typescript
+import { defineSecret } from 'firebase-functions/params';
+
+// Define secrets at the top level
+const anthropicApiKey = defineSecret('ANTHROPIC_API_KEY');
+
+// Use in function definitions
+export const myFunction = onRequest({ secrets: [anthropicApiKey] }, async (req, res) => {
+  // Access secret value
+  const apiKey = anthropicApiKey.value();
+  
+  // Access environment variables
+  const model = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
+  const maxCost = parseFloat(process.env.MAX_COST_PER_SESSION || '5.00');
+  
+  // Use in your code...
+});
+```
+
+### ❌ Deprecated Way (v1 - DO NOT USE)
+
+```typescript
+import { config } from 'firebase-functions'; // ❌ Deprecated
+
+export const myFunction = onRequest(async (req, res) => {
+  const functionsConfig = config(); // ❌ Not available in v2
+  const apiKey = functionsConfig.anthropic?.api_key; // ❌ Will fail
+});
 ```
 
 ## Local Development
 
-For local development with emulators, create `functions/.runtimeconfig.json`:
+For local development with Firebase emulators:
 
+### 1. Create `functions/.env` file:
+```env
+ANTHROPIC_API_KEY=your_local_anthropic_key
+ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
+MAX_COST_PER_SESSION=5.00
+DAILY_COST_LIMIT=500.00
+USER_DAILY_COST_LIMIT=10.00
+```
+
+### 2. For legacy config compatibility, create `functions/.runtimeconfig.json`:
 ```json
 {
-  "openai": {
-    "api_key": "sk-proj-...your_local_openai_key"
-  },
-  "kvk": {
-    "api_key": "your_local_kvk_key"
-  },
-  "stripe": {
-    "secret_key": "sk_test_...your_local_stripe_key"
+  "anthropic": {
+    "model": "claude-3-5-sonnet-20241022"
   },
   "app": {
-    "environment": "development",
-    "frontend_url": "http://localhost:3000"
+    "max_cost_per_session": "5.00",
+    "daily_cost_limit": "500.00",
+    "user_daily_cost_limit": "10.00",
+    "environment": "development"
   }
 }
 ```
 
-**Note**: Never commit `.runtimeconfig.json` to version control!
+**⚠️ Important**: Never commit `.env` or `.runtimeconfig.json` to version control!
+
+## Managing Secrets
+
+### View secrets:
+```bash
+firebase functions:secrets:access ANTHROPIC_API_KEY
+```
+
+### Update a secret:
+```bash
+firebase functions:secrets:set ANTHROPIC_API_KEY --force
+```
+
+### Delete a secret:
+```bash
+firebase functions:secrets:delete ANTHROPIC_API_KEY
+```
+
+### List all secrets:
+```bash
+firebase functions:secrets:list
+```
+
+## Environment Variables vs Secrets
+
+| Type | Use For | Method | Access in Code |
+|------|---------|--------|----------------|
+| **Secrets** | API keys, passwords, tokens | `firebase functions:secrets:set` | `secretName.value()` |
+| **Environment Variables** | Non-sensitive config, URLs, limits | `firebase functions:config:set` | `process.env.VAR_NAME` |
+
+## Deployment
+
+After setting up your configuration:
+
+```bash
+# Deploy all functions with new configuration
+firebase deploy --only functions
+
+# Deploy specific function
+firebase deploy --only functions:startWBSOChat
+```
+
+## Verification
+
+Test your configuration with the health check endpoint:
+
+```bash
+curl -X GET "https://wbsochathealth-z44g5hzbna-ew.a.run.app"
+```
+
+Expected response:
+```json
+{
+  "success": true,
+  "message": "WBSO Chat API is healthy",
+  "timestamp": "2025-07-24T21:07:16.236Z",
+  "version": "1.0.0",
+  "security": "enabled"
+}
+```
+
+## Troubleshooting
+
+### Common Issues:
+
+1. **"functions.config() is no longer available"**
+   - ✅ Solution: Migrate to secrets and environment variables as shown above
+
+2. **"ANTHROPIC_API_KEY secret not configured"**
+   - ✅ Solution: Set the secret using `firebase functions:secrets:set ANTHROPIC_API_KEY`
+
+3. **Functions can't access secrets**
+   - ✅ Solution: Ensure secrets are included in function definition: `{ secrets: [secretName] }`
+
+4. **Environment variables undefined**
+   - ✅ Solution: Set using `firebase functions:config:set` and access via `process.env`
 
 ## Getting API Keys
 
-### 🤖 OpenAI API Key
-1. Go to [OpenAI Platform](https://platform.openai.com)
+### 🤖 Anthropic API Key (REQUIRED)
+1. Go to [Anthropic Console](https://console.anthropic.com)
 2. Sign up/Login → API Keys
-3. Create new secret key
-4. Copy the key (starts with `sk-proj-` or `sk-`)
+3. Create new API key
+4. Copy the key (starts with `sk-ant-`)
 
-### 🏢 KVK API Key
-1. Go to [KVK API Portal](https://developers.kvk.nl)
-2. Register for an account
-3. Request API access
-4. Get your API key from dashboard
-
-### 💳 Stripe Keys
+### 💳 Stripe Keys (if using payments)
 1. Go to [Stripe Dashboard](https://dashboard.stripe.com)
 2. Developers → API keys
 3. Copy Secret key (starts with `sk_test_` or `sk_live_`)
-4. Set up webhook endpoint for subscription events
 
-### 📧 SendGrid Key
+### 📧 SendGrid Key (if using email)
 1. Go to [SendGrid](https://sendgrid.com)
 2. Settings → API Keys
 3. Create API key with Mail Send permissions
 
-## Environment Verification
-
-Add this function to verify your environment setup:
-
-```bash
-# Deploy a test function to verify configuration
-firebase functions:config:set test.verification="setup_complete"
-firebase deploy --only functions:verifyEnvironment
-```
+### 🏢 KVK API Key (if using Dutch business data)
+1. Go to [KVK API Portal](https://developers.kvk.nl)
+2. Register and request API access
+3. Get your API key from dashboard
 
 ## Production vs Development
 
 ### Development
 ```bash
 firebase use development-project-id
-# Set development configurations
+# Set development secrets and config
 ```
 
 ### Production
 ```bash
 firebase use production-project-id
-# Set production configurations with live API keys
-``` 
+# Set production secrets and config with live API keys
+```
+
+## Security Best Practices
+
+1. **Use secrets for all sensitive data** (API keys, passwords)
+2. **Use environment variables for non-sensitive configuration**
+3. **Never commit secrets to version control**
+4. **Rotate secrets regularly**
+5. **Use different secrets for different environments**
+6. **Grant minimal necessary permissions to service accounts** 

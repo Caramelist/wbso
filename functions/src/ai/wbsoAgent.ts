@@ -4,7 +4,10 @@ import { ConversationManager, ChatResponse } from './conversationManager';
 import { SessionManager } from './sessionManager';
 import { TokenCounter } from './tokenCounter';
 import { logger } from 'firebase-functions';
-import { config } from 'firebase-functions';
+import { defineSecret } from 'firebase-functions/params';
+
+// Define the secret for Anthropic API key
+const anthropicApiKey = defineSecret('ANTHROPIC_API_KEY');
 
 export interface WBSOAgentConfig {
   model: string;
@@ -28,12 +31,11 @@ export class WBSOAgent {
   private config: WBSOAgentConfig;
 
   constructor() {
-    // Get API key from Firebase Functions config
-    const functionsConfig = config();
-    const apiKey = functionsConfig.anthropic?.api_key;
+    // Get API key from Firebase Functions v2 secrets
+    const apiKey = anthropicApiKey.value();
     
     if (!apiKey) {
-      throw new Error('ANTHROPIC_API_KEY not configured in Firebase Functions config');
+      throw new Error('ANTHROPIC_API_KEY secret not configured');
     }
 
     this.claude = new Anthropic({
@@ -46,19 +48,20 @@ export class WBSOAgent {
     this.tokenCounter = new TokenCounter();
     
     this.config = {
-      model: functionsConfig.anthropic?.model || "claude-3-5-sonnet-20241022",
+      model: process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20241022",
       maxTokens: 4000,
       temperature: 0.3,
       maxExchanges: 15,
       costLimits: {
-        perSession: parseFloat(functionsConfig.app?.max_cost_per_session || '5.00'),
-        daily: parseFloat(functionsConfig.app?.daily_cost_limit || '500.00')
+        perSession: parseFloat(process.env.MAX_COST_PER_SESSION || '5.00'),
+        daily: parseFloat(process.env.DAILY_COST_LIMIT || '500.00')
       }
     };
 
     logger.info('WBSO Agent initialized', { 
       model: this.config.model,
-      maxCostPerSession: this.config.costLimits.perSession
+      maxCostPerSession: this.config.costLimits.perSession,
+      hasApiKey: !!apiKey
     });
   }
 

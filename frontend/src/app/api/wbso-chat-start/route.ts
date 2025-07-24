@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// GDPR COMPLIANCE: Only EU regions for Firebase Functions - VERIFIED WORKING URLS
+// GDPR COMPLIANCE: Only EU regions for Firebase Functions - UPDATED WITH DEPLOYED URLS
 const POSSIBLE_FIREBASE_URLS = [
   process.env.FIREBASE_FUNCTIONS_URL,
-  'https://europe-west1-wbso-application.cloudfunctions.net' // Belgium - CONFIRMED DEPLOYED
+  'https://europe-west1-wbso-application.cloudfunctions.net', // Legacy format
+  'https://startwbsochat-z44g5hzbna-ew.a.run.app' // New Cloud Run format - CONFIRMED DEPLOYED
 ].filter(Boolean);
 
 export async function POST(request: NextRequest) {
@@ -25,13 +26,18 @@ export async function POST(request: NextRequest) {
     // Try different Firebase Functions URLs
     let lastError: Error | null = null;
     
-    for (const baseUrl of POSSIBLE_FIREBASE_URLS) {
+    for (const functionUrl of POSSIBLE_FIREBASE_URLS) {
       try {
-        const functionUrl = `${baseUrl}/startWBSOChat`;
-        console.log('Trying Firebase Function URL:', functionUrl);
+        // For the new Cloud Run URLs, use the URL directly
+        // For legacy URLs, append the function name
+        const requestUrl = functionUrl.includes('run.app') 
+          ? functionUrl 
+          : `${functionUrl}/startWBSOChat`;
+          
+        console.log('Trying Firebase Function URL:', requestUrl);
         console.log('Making request with auth header:', authHeader?.substring(0, 20) + '...');
 
-        const response = await fetch(functionUrl, {
+        const response = await fetch(requestUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

@@ -6,13 +6,18 @@ import { WBSOAgent } from './wbsoAgent';
 import { logger } from 'firebase-functions';
 import cors from 'cors';
 import { RateLimiterMemory, RateLimiterRes } from 'rate-limiter-flexible';
+import { defineSecret } from 'firebase-functions/params';
+
+// Define the secret for Anthropic API key
+const anthropicApiKey = defineSecret('ANTHROPIC_API_KEY');
 
 // Set global options for all functions
 setGlobalOptions({
   maxInstances: 10,
   region: 'europe-west1',
   memory: '1GiB',
-  timeoutSeconds: 180
+  timeoutSeconds: 180,
+  secrets: [anthropicApiKey] // Include secrets in global options
 });
 
 const db = getFirestore();
@@ -258,7 +263,7 @@ const verifySessionOwnership = async (sessionId: string, userInfo: { uid: string
 /**
  * Start a new WBSO chat conversation - SECURED
  */
-export const startWBSOChat = onRequest(async (req, res) => {
+export const startWBSOChat = onRequest({ secrets: [anthropicApiKey] }, async (req, res) => {
   return new Promise((resolve) => {
     corsHandler(req, res, async () => {
       try {
@@ -333,7 +338,7 @@ export const startWBSOChat = onRequest(async (req, res) => {
 /**
  * Process a message in WBSO chat conversation - SECURED
  */
-export const processWBSOChatMessage = onRequest(async (req, res) => {
+export const processWBSOChatMessage = onRequest({ secrets: [anthropicApiKey] }, async (req, res) => {
   return new Promise((resolve) => {
     corsHandler(req, res, async () => {
       try {
@@ -405,7 +410,7 @@ export const processWBSOChatMessage = onRequest(async (req, res) => {
 /**
  * Generate WBSO application from conversation - SECURED
  */
-export const generateWBSOApplication = onRequest(async (req, res) => {
+export const generateWBSOApplication = onRequest({ secrets: [anthropicApiKey] }, async (req, res) => {
   return new Promise((resolve) => {
     corsHandler(req, res, async () => {
       try {
@@ -480,7 +485,7 @@ export const generateWBSOApplication = onRequest(async (req, res) => {
 /**
  * Health check endpoint - Public but rate limited
  */
-export const wbsoChatHealth = onRequest(async (req, res) => {
+export const wbsoChatHealth = onRequest({ secrets: [anthropicApiKey] }, async (req, res) => {
   return new Promise((resolve) => {
     corsHandler(req, res, async () => {
       try {
@@ -489,7 +494,7 @@ export const wbsoChatHealth = onRequest(async (req, res) => {
         
         // Check required parameters - try to access them to validate they're set
         try {
-          const apiKey = process.env.ANTHROPIC_API_KEY;
+          const apiKey = anthropicApiKey.value();
           if (!apiKey) {
             throw new Error('ANTHROPIC_API_KEY not configured');
           }
@@ -497,7 +502,7 @@ export const wbsoChatHealth = onRequest(async (req, res) => {
           res.status(500).json({
             success: false,
             error: 'Missing required parameters',
-            details: 'ANTHROPIC_API_KEY not configured'
+            details: 'ANTHROPIC_API_KEY secret not configured'
           });
           return resolve(undefined);
         }
