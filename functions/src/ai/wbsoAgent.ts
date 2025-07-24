@@ -51,7 +51,7 @@ export class WBSOAgent {
       model: process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-20241022",
       maxTokens: 4000,
       temperature: 0.3,
-      maxExchanges: 15,
+      maxExchanges: 25, // Increased from 15 to allow longer conversations
       costLimits: {
         perSession: parseFloat(process.env.MAX_COST_PER_SESSION || '5.00'),
         daily: parseFloat(process.env.DAILY_COST_LIMIT || '500.00')
