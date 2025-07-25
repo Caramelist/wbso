@@ -116,7 +116,42 @@ const WBSOChatInterface: React.FC = () => {
     }
   }, [loading]);
 
+  // GDPR Consent state for AI processing
+  const [gdprConsent, setGdprConsent] = useState(false);
+  const [showGdprNotice, setShowGdprNotice] = useState(true);
+
+  const handleGdprConsent = (consent: boolean) => {
+    setGdprConsent(consent);
+    setShowGdprNotice(false);
+    if (consent) {
+      // Store consent in localStorage for session
+      localStorage.setItem('wbso_ai_gdpr_consent', 'true');
+      localStorage.setItem('wbso_ai_gdpr_consent_date', new Date().toISOString());
+    }
+  };
+
+  // Check for existing consent on mount
+  useEffect(() => {
+    const existingConsent = localStorage.getItem('wbso_ai_gdpr_consent');
+    const consentDate = localStorage.getItem('wbso_ai_gdpr_consent_date');
+    
+    // Check if consent is less than 30 days old
+    if (existingConsent === 'true' && consentDate) {
+      const consentTimestamp = new Date(consentDate).getTime();
+      const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+      
+      if (consentTimestamp > thirtyDaysAgo) {
+        setGdprConsent(true);
+        setShowGdprNotice(false);
+      }
+    }
+  }, []);
+
   const initializeChat = async () => {
+    if (!gdprConsent) {
+      return; // Don't initialize until consent is given
+    }
+    
     try {
       setLoading(true);
       
@@ -464,234 +499,316 @@ const WBSOChatInterface: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto p-6">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center space-x-3 mb-2">
-          <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-slate-900">
-            WBSO AI Assistent
-          </h1>
-        </div>
-        <p className="text-slate-600">
-          {isPreFilled 
-            ? 'Voltooi uw WBSO-aanvraag in een paar minuten met behulp van AI' 
-            : 'Creëer uw WBSO-aanvraag door te chatten met onze AI-expert'
-          }
-        </p>
-        
-        {/* Progress indicators - REMOVED COST DISPLAY */}
-        <div className="mt-6 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-              <span className="text-sm text-slate-600">Fase:</span>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPhaseColor()}`}>
-                {getPhaseDisplay()}
-              </span>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
-              <span className="text-sm text-slate-600">Volledigheid:</span>
-              <span className="text-sm font-medium text-slate-900">{completeness}%</span>
-            </div>
-          </div>
-          
-          <div className="w-32 bg-slate-200 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${completeness}%` }}
-            ></div>
-          </div>
-        </div>
-
-        {/* Lead magnet context */}
-        {isPreFilled && leadData && (
-          <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-            <div className="flex items-center space-x-2 mb-2">
-              <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      {/* GDPR Consent Notice */}
+      {showGdprNotice && (
+        <div className="mb-8 bg-white border-2 border-blue-200 rounded-lg p-6 shadow-lg">
+          <div className="flex items-start space-x-3">
+            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+              <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 0h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
-              <h3 className="font-medium text-emerald-800">
-                Gegevens overgenomen van WBSO Check
-              </h3>
             </div>
-            <div className="text-sm text-emerald-700">
-              <strong>{leadData.company_name}</strong> - {leadData.sbi_description} 
-              • Berekende subsidie: €{leadData.calculated_subsidy?.toLocaleString()}
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-slate-900 mb-3">
+                AI-assistentie voor uw WBSO-aanvraag
+              </h3>
+              <div className="text-sm text-slate-700 space-y-3">
+                <p>
+                  <strong>Gegevensbescherming & Privacy:</strong> Uw gesprek met onze AI wordt verwerkt door Anthropic (Claude API) om u te helpen bij het maken van uw WBSO-aanvraag.
+                </p>
+                <div className="bg-slate-50 p-3 rounded border-l-4 border-blue-400">
+                  <p className="font-medium text-slate-800 mb-2">Wat u moet weten:</p>
+                  <ul className="space-y-1 text-slate-700">
+                    <li>• <strong>EU-bescherming:</strong> Anthropic Ireland verwerkt EU-gebruikersgegevens volgens GDPR</li>
+                    <li>• <strong>Geen training:</strong> Uw gesprekken worden niet gebruikt voor AI-modeltraining</li>
+                    <li>• <strong>Veilige opslag:</strong> Gegevens beveiligd met standaard contractbepalingen</li>
+                    <li>• <strong>Uw rechten:</strong> Toegang, verwijdering, en overdracht van uw gegevens</li>
+                  </ul>
+                </div>
+                <p>
+                  <strong>Doel:</strong> AI-assistentie voor het genereren van uw WBSO R&D belastingvoordeel aanvraag.
+                </p>
+                <p className="text-xs text-slate-600">
+                  Door verder te gaan stemt u in met de verwerking van uw gesprekgegevens voor bovenstaande doeleinden. 
+                  U kunt deze toestemming op elk moment intrekken door contact op te nemen met{' '}
+                  <a href="mailto:privacy@wbsosimpel.nl" className="text-blue-600 hover:underline">
+                    privacy@wbsosimpel.nl
+                  </a>
+                </p>
+              </div>
+              <div className="mt-4 flex space-x-3">
+                <button
+                  onClick={() => handleGdprConsent(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Akkoord - Start AI Chat
+                </button>
+                <button
+                  onClick={() => handleGdprConsent(false)}
+                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-6 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Weigeren
+                </button>
+              </div>
             </div>
           </div>
-        )}
-      </div>
-
-      {/* Development Debug Panel */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <details className="cursor-pointer">
-            <summary className="font-medium text-yellow-800 mb-2">
-              🔧 Debug Info (Development Only)
-            </summary>
-            <div className="text-xs text-yellow-700 space-y-1">
-              <div><strong>User:</strong> {user ? 'Authenticated' : 'Not authenticated'}</div>
-              <div><strong>Firebase User:</strong> {firebaseUser ? 'Authenticated' : 'Not authenticated'}</div>
-              <div><strong>Language:</strong> {locale}</div>
-              <div><strong>Session ID:</strong> {sessionId}</div>
-              <div><strong>Messages:</strong> {messages.length}</div>
-              <div><strong>Phase:</strong> {phase}</div>
-              <div><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</div>
-              <div><strong>Can Generate:</strong> {canGenerate ? 'Yes' : 'No'}</div>
-              <div><strong>Pre-filled:</strong> {isPreFilled ? 'Yes' : 'No'}</div>
-              {isPreFilled && <div><strong>Lead Data:</strong> {leadData ? 'Available' : 'Missing'}</div>}
-            </div>
-          </details>
         </div>
       )}
 
-      {/* Chat interface */}
-      <div className="bg-white border border-gray-200 rounded-lg shadow-lg">
-        {/* Messages */}
-        <div className="h-96 overflow-y-auto p-6 space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-3xl px-4 py-3 rounded-lg ${
-                  message.role === 'user'
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-900'
-                }`}
-              >
-                <div className="whitespace-pre-wrap">{message.content}</div>
-                <div className="text-xs opacity-75 mt-2">
-                  {message.timestamp.toLocaleTimeString('nl-NL')}
+      {/* Show message if consent was declined */}
+      {!showGdprNotice && !gdprConsent && (
+        <div className="mb-8 bg-amber-50 border border-amber-200 rounded-lg p-6">
+          <div className="flex items-center space-x-3">
+            <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            <div>
+              <h3 className="font-medium text-amber-800">AI-assistentie niet beschikbaar</h3>
+              <p className="text-sm text-amber-700 mt-1">
+                Zonder toestemming kunnen we u niet helpen met AI-assistentie. U kunt nog steeds het{' '}
+                <a href="/applications/new" className="underline hover:no-underline">
+                  traditionele formulier
+                </a>{' '}
+                gebruiken.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Only show chat interface after consent */}
+      {gdprConsent && (
+        <>
+          {/* Header */}
+          <div className="mb-8">
+            <div className="flex items-center space-x-3 mb-2">
+              <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center">
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h1 className="text-3xl font-bold text-slate-900">
+                WBSO AI Assistent
+              </h1>
+            </div>
+            <p className="text-slate-600">
+              {isPreFilled 
+                ? 'Voltooi uw WBSO-aanvraag in een paar minuten met behulp van AI' 
+                : 'Creëer uw WBSO-aanvraag door te chatten met onze AI-expert'
+              }
+            </p>
+            
+            {/* Progress indicators - REMOVED COST DISPLAY */}
+            <div className="mt-6 flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                  <span className="text-sm text-slate-600">Fase:</span>
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPhaseColor()}`}>
+                    {getPhaseDisplay()}
+                  </span>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                  <span className="text-sm text-slate-600">Volledigheid:</span>
+                  <span className="text-sm font-medium text-slate-900">{completeness}%</span>
+                </div>
+              </div>
+              
+              <div className="w-32 bg-slate-200 rounded-full h-2">
+                <div 
+                  className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${completeness}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* Lead magnet context */}
+            {isPreFilled && leadData && (
+              <div className="mt-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+                <div className="flex items-center space-x-2 mb-2">
+                  <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <h3 className="font-medium text-emerald-800">
+                    Gegevens overgenomen van WBSO Check
+                  </h3>
+                </div>
+                <div className="text-sm text-emerald-700">
+                  <strong>{leadData.company_name}</strong> - {leadData.sbi_description} 
+                  • Berekende subsidie: €{leadData.calculated_subsidy?.toLocaleString()}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Development Debug Panel */}
+          {process.env.NODE_ENV === 'development' && (
+            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <details className="cursor-pointer">
+                <summary className="font-medium text-yellow-800 mb-2">
+                  🔧 Debug Info (Development Only)
+                </summary>
+                <div className="text-xs text-yellow-700 space-y-1">
+                  <div><strong>User:</strong> {user ? 'Authenticated' : 'Not authenticated'}</div>
+                  <div><strong>Firebase User:</strong> {firebaseUser ? 'Authenticated' : 'Not authenticated'}</div>
+                  <div><strong>Language:</strong> {locale}</div>
+                  <div><strong>Session ID:</strong> {sessionId}</div>
+                  <div><strong>Messages:</strong> {messages.length}</div>
+                  <div><strong>Phase:</strong> {phase}</div>
+                  <div><strong>Loading:</strong> {loading ? 'Yes' : 'No'}</div>
+                  <div><strong>Can Generate:</strong> {canGenerate ? 'Yes' : 'No'}</div>
+                  <div><strong>Pre-filled:</strong> {isPreFilled ? 'Yes' : 'No'}</div>
+                  {isPreFilled && <div><strong>Lead Data:</strong> {leadData ? 'Available' : 'Missing'}</div>}
+                </div>
+              </details>
+            </div>
+          )}
+
+          {/* Chat interface */}
+          <div className="bg-white border border-gray-200 rounded-lg shadow-lg">
+            {/* Messages */}
+            <div className="h-96 overflow-y-auto p-6 space-y-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-3xl px-4 py-3 rounded-lg ${
+                      message.role === 'user'
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-900'
+                    }`}
+                  >
+                    <div className="whitespace-pre-wrap">{message.content}</div>
+                    <div className="text-xs opacity-75 mt-2">
+                      {message.timestamp.toLocaleTimeString('nl-NL')}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 px-4 py-3 rounded-lg">
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                      <span className="text-gray-600">AI denkt na...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Input area */}
+            <div className="border-t border-gray-200 p-4">
+              <div className="flex space-x-4">
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Typ uw bericht hier..."
+                  rows={2}
+                  disabled={loading || phase === 'complete'}
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:bg-gray-100"
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={loading || !input.trim() || phase === 'complete'}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Verstuur
+                </button>
+              </div>
+              
+              {/* Action buttons */}
+              <div className="mt-4 flex justify-between items-center">
+                <div className="text-sm text-gray-500">
+                  {phase === 'complete' 
+                    ? 'Chat is voltooid. Download uw WBSO-aanvraag hieronder.' 
+                    : 'Druk op Enter om te versturen, Shift+Enter voor nieuwe regel'
+                  }
+                </div>
+                
+                <div className="flex space-x-3">
+                  {canGenerate && !generatedDocument && (
+                    <button
+                      onClick={generateApplication}
+                      disabled={isGenerating}
+                      className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                    >
+                      {isGenerating ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                          <span>Genereren...</span>
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <span>Genereer WBSO Aanvraag</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                  
+                  {generatedDocument && (
+                    <button
+                      onClick={downloadPDF}
+                      className="bg-slate-600 hover:bg-slate-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      <span>Download PDF</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
-          ))}
-          
-          {loading && (
-            <div className="flex justify-start">
-              <div className="bg-gray-100 px-4 py-3 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                  <span className="text-gray-600">AI denkt na...</span>
+          </div>
+
+          {/* Generated document preview */}
+          {generatedDocument && (
+            <div className="mt-8 bg-slate-50 border border-slate-200 rounded-lg p-6">
+              <div className="flex items-center space-x-2 mb-4">
+                <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 className="text-xl font-bold text-slate-900">
+                  Gegenereerde WBSO Aanvraag
+                </h3>
+              </div>
+              
+              <div className="space-y-4">
+                <div className="bg-white p-4 rounded-lg">
+                  <h4 className="font-medium text-gray-900 mb-2">Projectbeschrijving</h4>
+                  <p className="text-sm text-gray-600">
+                    {generatedDocument.projectDescription.substring(0, 200)}...
+                  </p>
+                </div>
+                
+                <div className="bg-white p-4 rounded-lg">
+                  <h4 className="font-medium text-gray-900 mb-2">Activiteiten & Kosten</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Totaal uren:</span> {generatedDocument.costBreakdown.totalHours}
+                    </div>
+                    <div>
+                      <span className="font-medium">WBSO-aftrek:</span> €{generatedDocument.costBreakdown.wbsoDeduction.toLocaleString()}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
-          
-          <div ref={messagesEndRef} />
-        </div>
-
-        {/* Input area */}
-        <div className="border-t border-gray-200 p-4">
-          <div className="flex space-x-4">
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Typ uw bericht hier..."
-              rows={2}
-              disabled={loading || phase === 'complete'}
-              className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:bg-gray-100"
-            />
-            <button
-              onClick={sendMessage}
-              disabled={loading || !input.trim() || phase === 'complete'}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-6 py-2 rounded-lg font-medium transition-colors"
-            >
-              Verstuur
-            </button>
-          </div>
-          
-          {/* Action buttons */}
-          <div className="mt-4 flex justify-between items-center">
-            <div className="text-sm text-gray-500">
-              {phase === 'complete' 
-                ? 'Chat is voltooid. Download uw WBSO-aanvraag hieronder.' 
-                : 'Druk op Enter om te versturen, Shift+Enter voor nieuwe regel'
-              }
-            </div>
-            
-            <div className="flex space-x-3">
-              {canGenerate && !generatedDocument && (
-                <button
-                  onClick={generateApplication}
-                  disabled={isGenerating}
-                  className="bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
-                >
-                  {isGenerating ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Genereren...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
-                      <span>Genereer WBSO Aanvraag</span>
-                    </>
-                  )}
-                </button>
-              )}
-              
-              {generatedDocument && (
-                <button
-                  onClick={downloadPDF}
-                  className="bg-slate-600 hover:bg-slate-700 text-white px-6 py-2 rounded-lg font-medium transition-colors flex items-center space-x-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <span>Download PDF</span>
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Generated document preview */}
-      {generatedDocument && (
-        <div className="mt-8 bg-slate-50 border border-slate-200 rounded-lg p-6">
-          <div className="flex items-center space-x-2 mb-4">
-            <svg className="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            <h3 className="text-xl font-bold text-slate-900">
-              Gegenereerde WBSO Aanvraag
-            </h3>
-          </div>
-          
-          <div className="space-y-4">
-            <div className="bg-white p-4 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2">Projectbeschrijving</h4>
-              <p className="text-sm text-gray-600">
-                {generatedDocument.projectDescription.substring(0, 200)}...
-              </p>
-            </div>
-            
-            <div className="bg-white p-4 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2">Activiteiten & Kosten</h4>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">Totaal uren:</span> {generatedDocument.costBreakdown.totalHours}
-                </div>
-                <div>
-                  <span className="font-medium">WBSO-aftrek:</span> €{generatedDocument.costBreakdown.wbsoDeduction.toLocaleString()}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        </>
       )}
     </div>
   );
