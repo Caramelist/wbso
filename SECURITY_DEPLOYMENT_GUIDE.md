@@ -40,9 +40,12 @@ db.collection('users').doc('YOUR_ADMIN_UID').set({
 
 ### 4. 💰 **COST MONITORING ALERTS** - CRITICAL
 Set up monitoring for:
-- Daily costs > $400 (80% of $500 limit)
+- Daily costs > $40 (80% of $50 limit) - CONSERVATIVE SAFETY
 - Individual user costs > $8 (80% of $10 limit)
 - Unusual API call spikes
+
+**Business Context**: 20K Dutch companies apply for WBSO annually (~55/day average).
+$50 daily limit = 5 users at maximum daily usage, appropriate for development phase.
 
 ### 5. 🌐 **CORS SECURITY** - COMPLETED ✅
 - Removed localhost origins from production
@@ -125,8 +128,8 @@ Set up monitoring for:
    - Database query performance
 
 ### **Alerting Thresholds**
-- Daily cost > $400
-- User cost > $8
+- Daily cost > $40 (80% of $50 limit)
+- User cost > $8 (80% of $10 limit)
 - Rate limit violations > 100/hour
 - Error rate > 5%
 - Response time > 10 seconds
@@ -163,8 +166,8 @@ Set up monitoring for:
 4. **Document**: Log all suspicious activity
 
 ### **Cost Spike Response**
-1. **Alert**: Immediate notification when >$400/day
-2. **Throttle**: Reduce global limits temporarily
+1. **Alert**: Immediate notification when >$40/day (80% of limit)
+2. **Throttle**: Reduce global limits temporarily to $25/day if needed
 3. **Investigate**: Identify source of spike
 4. **Block**: Suspend abusive users if needed
 

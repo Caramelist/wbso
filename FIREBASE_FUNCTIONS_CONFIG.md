@@ -15,9 +15,9 @@ firebase functions:secrets:set KVK_API_KEY="your-kvk-api-key"
 
 ### **🛡️ SECURITY ENVIRONMENT VARIABLES** - Recommended values
 ```bash
-# Cost protection limits (ADJUST FOR YOUR BUDGET)
+# Cost protection limits (CONSERVATIVE FOR SAFETY)
 firebase functions:config:set app.max_cost_per_session="5.00"      # $5 per chat session
-firebase functions:config:set app.daily_cost_limit="500.00"       # $500 global daily limit  
+firebase functions:config:set app.daily_cost_limit="50.00"        # $50 global daily limit (CONSERVATIVE)
 firebase functions:config:set app.user_daily_cost_limit="10.00"   # $10 per user daily
 
 # Environment configuration
