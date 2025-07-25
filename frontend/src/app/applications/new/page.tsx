@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AppLayout from '@/components/layout/AppLayout';
 import WBSOApplicationForm from '@/components/wbso/WBSOApplicationForm';
@@ -10,7 +10,8 @@ import { useLanguage } from '@/contexts/LanguageContext';
 // User journey types based on lead data
 type UserJourney = 'lead_magnet' | 'direct' | 'returning';
 
-export default function NewWBSOApplicationPage() {
+// Component that uses useSearchParams - needs to be wrapped in Suspense
+function NewApplicationContent() {
   const { user, loading } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
@@ -409,4 +410,25 @@ export default function NewWBSOApplicationPage() {
   }
 
   return null;
+}
+
+// Loading fallback for Suspense
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-slate-700 mx-auto mb-4"></div>
+        <p className="text-slate-600">Pagina wordt geladen...</p>
+      </div>
+    </div>
+  );
+}
+
+// Main component with Suspense boundary
+export default function NewWBSOApplicationPage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <NewApplicationContent />
+    </Suspense>
+  );
 } 
