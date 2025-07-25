@@ -1,5 +1,6 @@
 'use client';
 
+// Force deployment - security improvements active
 import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/ui/LanguageSwitcher';
