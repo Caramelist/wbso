@@ -20,7 +20,12 @@ export interface WBSOAgentConfig {
   };
 }
 
-// ChatResponse interface is now imported from conversationManager to avoid circular dependency
+interface ApiRetryConfig {
+  maxRetries: number;
+  baseDelayMs: number;
+  maxDelayMs: number;
+  retryableErrors: string[];
+}
 
 export class WBSOAgent {
   private claude: Anthropic;
@@ -29,6 +34,7 @@ export class WBSOAgent {
   private sessionManager: SessionManager;
   private tokenCounter: TokenCounter;
   private config: WBSOAgentConfig;
+  private retryConfig: ApiRetryConfig;
 
   constructor() {
     // Get API key from Firebase Functions v2 secrets
@@ -54,8 +60,16 @@ export class WBSOAgent {
       maxExchanges: 25, // Increased from 15 to allow longer conversations
       costLimits: {
         perSession: parseFloat(process.env.MAX_COST_PER_SESSION || '5.00'),
-        daily: parseFloat(process.env.DAILY_COST_LIMIT || '500.00')
+        daily: parseFloat(process.env.DAILY_COST_LIMIT || '50.00')
       }
+    };
+
+    // Retry configuration for API resilience
+    this.retryConfig = {
+      maxRetries: 3,
+      baseDelayMs: 1000,
+      maxDelayMs: 10000,
+      retryableErrors: ['overloaded_error', 'rate_limit_error', 'timeout', 'network_error']
     };
 
     logger.info('WBSO Agent initialized', { 
@@ -63,6 +77,92 @@ export class WBSOAgent {
       maxCostPerSession: this.config.costLimits.perSession,
       hasApiKey: !!apiKey
     });
+  }
+
+  private async sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private calculateBackoffDelay(attempt: number): number {
+    const delay = this.retryConfig.baseDelayMs * Math.pow(2, attempt);
+    const jitter = Math.random() * 1000; // Add jitter to prevent thundering herd
+    return Math.min(delay + jitter, this.retryConfig.maxDelayMs);
+  }
+
+  private isRetryableError(error: any): boolean {
+    if (!error) return false;
+    
+    const errorStr = JSON.stringify(error).toLowerCase();
+    return this.retryConfig.retryableErrors.some(retryableError => 
+      errorStr.includes(retryableError)
+    );
+  }
+
+  private getUserFriendlyErrorMessage(error: any): string {
+    const errorStr = JSON.stringify(error).toLowerCase();
+    
+    if (errorStr.includes('overloaded')) {
+      return 'De AI service is momenteel overbelast door hoge vraag. We proberen automatisch opnieuw...';
+    } else if (errorStr.includes('rate_limit')) {
+      return 'Tijdelijke limiet bereikt. Even geduld terwijl we opnieuw proberen...';
+    } else if (errorStr.includes('timeout')) {
+      return 'Verbinding verbroken. We herstellen de verbinding...';
+    } else {
+      return 'Tijdelijke service onderbreking. We proberen automatisch opnieuw...';
+    }
+  }
+
+  private async withRetry<T>(
+    operation: () => Promise<T>,
+    operationName: string,
+    sessionId?: string
+  ): Promise<T> {
+    let lastError: any;
+    
+    for (let attempt = 0; attempt <= this.retryConfig.maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          const delay = this.calculateBackoffDelay(attempt - 1);
+          logger.info(`Retrying ${operationName}`, { 
+            sessionId, 
+            attempt, 
+            delayMs: delay 
+          });
+          await this.sleep(delay);
+        }
+        
+        return await operation();
+        
+      } catch (error) {
+        lastError = error;
+        const isRetryable = this.isRetryableError(error);
+        
+        logger.warn(`${operationName} failed`, {
+          sessionId,
+          attempt: attempt + 1,
+          error: error instanceof Error ? error.message : String(error),
+          isRetryable,
+          willRetry: isRetryable && attempt < this.retryConfig.maxRetries
+        });
+        
+        // If it's the last attempt or not retryable, break
+        if (!isRetryable || attempt >= this.retryConfig.maxRetries) {
+          break;
+        }
+      }
+    }
+    
+    // All retries failed
+    const userMessage = this.getUserFriendlyErrorMessage(lastError);
+    const technicalMessage = lastError instanceof Error ? lastError.message : String(lastError);
+    
+    logger.error(`${operationName} failed after all retries`, {
+      sessionId,
+      maxRetries: this.retryConfig.maxRetries,
+      finalError: technicalMessage
+    });
+    
+    throw new Error(`${userMessage} (Technical: ${technicalMessage})`);
   }
 
   async startConversation(sessionId: string, userContext: any = {}): Promise<ChatResponse> {
@@ -80,21 +180,23 @@ export class WBSOAgent {
         createdAt: new Date(),
       });
 
-      // Generate opening message based on user context
-      const userLanguage = userContext?.language || 'nl';
-      const systemPrompt = this.knowledgeBase.getSystemPrompt(userLanguage);
-      const contextualGreeting = this.generateContextualGreeting(userContext);
-      
-      const response = await this.claude.messages.create({
-        model: this.config.model,
-        max_tokens: 1000,
-        temperature: this.config.temperature,
-        system: systemPrompt,
-        messages: [{
-          role: "user",
-          content: contextualGreeting
-        }]
-      });
+      // Generate opening message with retry logic
+      const response = await this.withRetry(async () => {
+        const userLanguage = userContext?.language || 'nl';
+        const systemPrompt = this.knowledgeBase.getSystemPrompt(userLanguage);
+        const contextualGreeting = this.generateContextualGreeting(userContext);
+        
+        return await this.claude.messages.create({
+          model: this.config.model,
+          max_tokens: 1000,
+          temperature: this.config.temperature,
+          system: systemPrompt,
+          messages: [{
+            role: "user",
+            content: contextualGreeting
+          }]
+        });
+      }, 'startConversation API call', sessionId);
 
       // Extract text from response (handle different content types)
       const responseText = this.extractTextFromResponse(response);
