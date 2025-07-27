@@ -162,6 +162,37 @@ const AppLayout: React.FC<AppLayoutProps> = ({ children }) => {
         <main className="flex-1 p-6 overflow-auto bg-slate-50">
           {children}
         </main>
+
+        {/* Footer */}
+        <footer className="bg-white shadow-sm border-t border-slate-200 px-6 py-4">
+          <div className="text-xs text-slate-500">
+            © 2024 WBSO Simpel. Alle rechten voorbehouden.
+          </div>
+          <div className="flex space-x-4 text-xs">
+            <a 
+              href="/privacy-policy" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-slate-500 hover:text-slate-700 underline"
+            >
+              Privacybeleid
+            </a>
+            <a 
+              href="/terms-conditions" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-slate-500 hover:text-slate-700 underline"
+            >
+              Algemene Voorwaarden
+            </a>
+            <a 
+              href="mailto:privacy@wbsosimpel.nl"
+              className="text-slate-500 hover:text-slate-700 underline"
+            >
+              Privacy Contact
+            </a>
+          </div>
+        </footer>
       </div>
     </div>
   );
